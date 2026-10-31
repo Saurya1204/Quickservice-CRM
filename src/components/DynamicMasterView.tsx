@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import MasterDocumentModal, { UploadDocumentButton } from '@/components/common/MasterDocumentModal';
 
 interface DynamicMasterProps {
   type: string;
@@ -27,6 +28,7 @@ export default function DynamicMasterView({
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [editingItem, setEditingItem] = useState<any | null>(null);
 
   const [formData, setFormData] = useState({
@@ -156,13 +158,13 @@ export default function DynamicMasterView({
             <p className="text-xs text-slate-400 mt-0.5">{subTitle}</p>
           </div>
 
-          <div className="flex items-center space-x-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2.5">
             <input
               type="text"
               placeholder={`Search ${title}...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-[#172033] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 w-full sm:w-48"
+              className="bg-[#172033] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 w-full sm:w-44"
             />
             <button
               onClick={() => {
@@ -170,10 +172,11 @@ export default function DynamicMasterView({
                 setFormData({ code: '', name: '', category: '', subText: '', field1: '', field2: '', status: 'Active' });
                 setShowAddModal(true);
               }}
-              className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-4 py-2 rounded-lg font-medium transition whitespace-nowrap shadow-lg"
+              className="bg-[#2563eb] hover:bg-blue-700 active:bg-blue-800 text-white text-xs sm:text-sm px-4 py-2 rounded-md font-medium transition shadow-md whitespace-nowrap cursor-pointer"
             >
-              + ADD NEW
+              + ADD
             </button>
+            <UploadDocumentButton onClick={() => setShowUploadModal(true)} />
           </div>
         </div>
 
@@ -342,6 +345,13 @@ export default function DynamicMasterView({
           )}
         </div>
       </div>
+      <MasterDocumentModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        masterType={type}
+        masterTitle={title}
+        entities={items.map((it) => ({ id: it._id, name: it.name, code: it.code }))}
+      />
     </div>
   );
 }

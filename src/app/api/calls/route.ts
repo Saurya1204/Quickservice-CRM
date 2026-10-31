@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { ServiceCall } from '@/models/ServiceCall';
+import { AuditLog } from '@/models/AuditLog';
 
 export async function GET(req: Request) {
   try {
@@ -8,17 +9,39 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const search = searchParams.get('search');
+    const branch = searchParams.get('branch');
+    const region = searchParams.get('region');
+    const city = searchParams.get('city');
 
     const query: any = {};
+
     if (status && status !== 'ALL') {
-      query.callStatus = status;
+      if (status === 'ACTIVE') {
+        query.callStatus = { $in: ['OPEN', 'APPOINTMENT', 'ALLOTED', 'PART_PENDING', 'REOPENED'] };
+      } else if (status === 'CLOSED') {
+        query.callStatus = { $in: ['COMPLETED', 'CANCEL'] };
+      } else {
+        query.callStatus = status;
+      }
     }
+
+    if (branch && branch !== 'All' && branch.trim()) {
+      query.branch = branch;
+    }
+    if (region && region !== 'All' && region.trim()) {
+      query.region = region;
+    }
+    if (city && city !== 'All' && city.trim()) {
+      query.city = { $regex: new RegExp(`^${city}$`, 'i') };
+    }
+
     if (search) {
       query.$or = [
         { callNo: { $regex: search, $options: 'i' } },
         { customerName: { $regex: search, $options: 'i' } },
         { customerMobile: { $regex: search, $options: 'i' } },
         { brandName: { $regex: search, $options: 'i' } },
+        { city: { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -69,6 +92,15 @@ export async function POST(req: Request) {
     }
 
     const newCall = await ServiceCall.create(body);
+
+    await AuditLog.create({
+      action: 'CALL_CREATE',
+      module: 'callManagement',
+      entityId: newCall._id.toString(),
+      entityName: `Call #${newCall.callNo}`,
+      performedBy: body.createdBy || 'Call Coordinator',
+    });
+
     return NextResponse.json({
       success: true,
       data: newCall,
@@ -83,10 +115,55 @@ export async function PUT(req: Request) {
   try {
     await connectDB();
     const body = await req.json();
-    const { id, ...updateData } = body;
+    const { id, action, reopenReason, reopenedBy, ...updateData } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, message: 'Call ID is required' }, { status: 400 });
+    }
+
+    // Support reopen in PUT directly
+    if (action === 'reopen') {
+      if (!reopenReason || !reopenReason.trim()) {
+        return NextResponse.json(
+          { success: false, message: 'Reopening Reason is required' },
+          { status: 400 }
+        );
+      }
+      const existingCall = await ServiceCall.findById(id);
+      if (!existingCall) {
+        return NextResponse.json({ success: false, message: 'Call not found' }, { status: 404 });
+      }
+
+      const updated = await ServiceCall.findByIdAndUpdate(
+        id,
+        {
+          $set: { callStatus: 'REOPENED', daysPending: 0 },
+          $push: {
+            reopenHistory: {
+              reopenedBy: reopenedBy || 'Authorized Officer',
+              reopenedAt: new Date(),
+              reason: reopenReason.trim(),
+              previousStatus: existingCall.callStatus,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      await AuditLog.create({
+        action: 'REOPEN_CALL',
+        module: 'callManagement',
+        entityId: id,
+        entityName: `Call #${existingCall.callNo}`,
+        performedBy: reopenedBy || 'Authorized Officer',
+        details: { reason: reopenReason },
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: updated,
+        message: `Call #${existingCall.callNo} reopened successfully!`,
+      });
     }
 
     const updated = await ServiceCall.findByIdAndUpdate(id, updateData, { new: true });

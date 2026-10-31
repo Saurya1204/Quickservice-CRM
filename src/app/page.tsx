@@ -6,11 +6,20 @@ import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import DashboardView from '@/components/DashboardView';
 import BranchMasterView from '@/components/BranchMasterView';
+import RoleMasterView from '@/components/RoleMasterView';
 import FranchiseMasterView from '@/components/FranchiseMasterView';
+import FreelanceMasterView from '@/components/FreelanceMasterView';
 import TechnicianMasterView from '@/components/TechnicianMasterView';
 import ClientMasterView from '@/components/ClientMasterView';
 import BrandMasterView from '@/components/BrandMasterView';
 import CategoryMasterView from '@/components/CategoryMasterView';
+import ProductMasterView from '@/components/ProductMasterView';
+import ModelMasterView from '@/components/ModelMasterView';
+import SparesMasterView from '@/components/SparesMasterView';
+import VendorMasterView from '@/components/VendorMasterView';
+import SymptomMasterView from '@/components/SymptomMasterView';
+import CauseMasterView from '@/components/CauseMasterView';
+import AnalysisMasterView from '@/components/AnalysisMasterView';
 import CategoryMappingView from '@/components/CategoryMappingView';
 import DownloadView from '@/components/DownloadView';
 import DynamicMasterView from '@/components/DynamicMasterView';
@@ -19,6 +28,7 @@ import UserManagementView from '@/components/UserManagementView';
 import UploaderView from '@/components/UploaderView';
 import ReportsView from '@/components/ReportsView';
 import ChangePasswordView from '@/components/ChangePasswordView';
+import NomenclatureManagementView from '@/components/NomenclatureManagementView';
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
@@ -29,7 +39,20 @@ export default function Home() {
     try {
       const stored = sessionStorage.getItem('qs_user');
       if (stored) {
-        setUser(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setUser(parsed);
+        // Refresh permissions from DB to catch dynamic changes immediately
+        if (parsed.id || parsed.username) {
+          fetch(`/api/auth/me?userId=${parsed.id || ''}&username=${parsed.username || ''}`)
+            .then((res) => res.json())
+            .then((json) => {
+              if (json.success && json.user) {
+                setUser(json.user);
+                sessionStorage.setItem('qs_user', JSON.stringify(json.user));
+              }
+            })
+            .catch(() => {});
+        }
       }
     } catch (e) {
       console.error(e);
@@ -43,6 +66,31 @@ export default function Home() {
     setUser(null);
   };
 
+  // Helper for quick testing of any role (Super Admin convenience)
+  const handleQuickSwitchRole = async (targetRoleCode: string) => {
+    try {
+      const sampleUsernames: Record<string, string> = {
+        SUPER_ADMIN: 'admin',
+        ADMIN: 'admin',
+        HOD: 'hod_rajesh',
+        ZSM: 'zsm_vikas',
+        BSM: 'bsm_anil',
+        ASM: 'asm_sumit',
+        CCO: 'cco_pooja',
+      };
+      const username = sampleUsernames[targetRoleCode] || 'admin';
+      const res = await fetch(`/api/auth/me?username=${username}`);
+      const json = await res.json();
+      if (json.success && json.user) {
+        setUser(json.user);
+        sessionStorage.setItem('qs_user', JSON.stringify(json.user));
+        setCurrentSection('dashboard');
+      }
+    } catch (e) {
+      console.error('Role switch error:', e);
+    }
+  };
+
   if (!checkedAuth) {
     return <div className="min-h-screen bg-[#0f172a]" />;
   }
@@ -53,111 +101,37 @@ export default function Home() {
 
   return (
     <div className="flex w-full min-h-screen bg-[#0f172a] text-[#f8fafc]">
-      {/* Sidebar Navigation */}
+      {/* Sidebar Navigation with Dynamic RBAC */}
       <Sidebar
         currentSection={currentSection}
         onSelectSection={(sec) => setCurrentSection(sec)}
         onLogout={handleLogout}
+        currentUser={user}
       />
 
       {/* Main Content Area */}
       <div className="ml-64 flex-1 p-8 space-y-6">
         <Header user={user} />
 
-        {/* 1. Dashboard */}
-        {currentSection === 'dashboard' && <DashboardView />}
+
+        {/* 1. Dynamic Role-Based Dashboard */}
+        {currentSection === 'dashboard' && <DashboardView currentUser={user} />}
 
         {/* 2. Master Category Views */}
-        {currentSection === 'branchMaster' && <BranchMasterView />}
-        {currentSection === 'franchiseMaster' && <FranchiseMasterView />}
-        {currentSection === 'freelancerMaster' && (
-          <DynamicMasterView
-            type="freelancerMaster"
-            title="Freelancer Master"
-            subTitle="Manage independent field technicians, skills & coverage"
-            nameLabel="Freelancer Name"
-            categoryLabel="Expertise / Skill"
-            subTextLabel="Coverage Area"
-            field1Label="Mobile No"
-            field2Label="Base City"
-          />
-        )}
+        {currentSection === 'branchMaster' && <BranchMasterView currentUser={user} />}
+        {currentSection === 'roleMaster' && <RoleMasterView currentUser={user} />}
+        {currentSection === 'franchiseMaster' && <FranchiseMasterView currentUser={user} />}
+        {currentSection === 'freelancerMaster' && <FreelanceMasterView />}
         {currentSection === 'technicianMaster' && <TechnicianMasterView />}
         {currentSection === 'clientMaster' && <ClientMasterView />}
         {currentSection === 'brandMaster' && <BrandMasterView />}
         {currentSection === 'categoryMaster' && <CategoryMasterView />}
-        {currentSection === 'productMaster' && (
-          <DynamicMasterView
-            type="productMaster"
-            title="Product Master"
-            subTitle="Product lines & technical specifications"
-            nameLabel="Product Name"
-            categoryLabel="Category"
-            subTextLabel="Technical Specification"
-            field1Label="Brand"
-            field2Label="Warranty (Months)"
-          />
-        )}
-        {currentSection === 'modelMaster' && (
-          <DynamicMasterView
-            type="modelMaster"
-            title="Model Master"
-            subTitle="Model numbers and variations"
-            nameLabel="Model Number"
-            categoryLabel="Product Line"
-            subTextLabel="Series / Color / Variant"
-            field1Label="Brand"
-            field2Label="Appliance Type"
-          />
-        )}
-        {currentSection === 'symptomMaster' && (
-          <DynamicMasterView
-            type="symptomMaster"
-            title="Symptom Master"
-            subTitle="Fault symptoms & customer reporting indicators"
-            nameLabel="Symptom Description"
-            categoryLabel="Category"
-            subTextLabel="Diagnostic Checks"
-            field1Label="Severity Level"
-            field2Label="Sub-system / Unit"
-          />
-        )}
-        {currentSection === 'causeMaster' && (
-          <DynamicMasterView
-            type="causeMaster"
-            title="Cause Master"
-            subTitle="Technical root causes & diagnostics"
-            nameLabel="Cause Description"
-            categoryLabel="Category"
-            subTextLabel="Failure Mode Details"
-            field1Label="Root Component"
-            field2Label="Symptom Code"
-          />
-        )}
-        {currentSection === 'analysisMaster' && (
-          <DynamicMasterView
-            type="analysisMaster"
-            title="Analysis Master"
-            subTitle="SOP & repair action plans"
-            nameLabel="Repair SOP / Action"
-            categoryLabel="Category"
-            subTextLabel="Procedure Details"
-            field1Label="Standard SLA"
-            field2Label="Cause Code"
-          />
-        )}
-        {currentSection === 'sparesMaster' && (
-          <DynamicMasterView
-            type="sparesMaster"
-            title="Spares Master"
-            subTitle="Spare parts catalogue, inventory & valuation"
-            nameLabel="Part Name"
-            categoryLabel="Part Category"
-            subTextLabel="OEM Part Number"
-            field1Label="Unit Price (₹)"
-            field2Label="Current Stock"
-          />
-        )}
+        {currentSection === 'productMaster' && <ProductMasterView />}
+        {currentSection === 'modelMaster' && <ModelMasterView />}
+        {currentSection === 'symptomMaster' && <SymptomMasterView />}
+        {currentSection === 'causeMaster' && <CauseMasterView />}
+        {currentSection === 'analysisMaster' && <AnalysisMasterView />}
+        {currentSection === 'sparesMaster' && <SparesMasterView />}
         {currentSection === 'cityMaster' && (
           <DynamicMasterView
             type="cityMaster"
@@ -182,18 +156,7 @@ export default function Home() {
             field2Label="Customer Density"
           />
         )}
-        {currentSection === 'vendorMaster' && (
-          <DynamicMasterView
-            type="vendorMaster"
-            title="Vendor Master"
-            subTitle="Spares suppliers & parts procurement partners"
-            nameLabel="Vendor / Firm Name"
-            categoryLabel="Supply Category"
-            subTextLabel="Office Address"
-            field1Label="GST Number"
-            field2Label="Contact Phone"
-          />
-        )}
+        {currentSection === 'vendorMaster' && <VendorMasterView />}
 
         {/* 3. Mapping Views */}
         {currentSection === 'brandMapping' && (
@@ -253,20 +216,28 @@ export default function Home() {
           'directCancelPo',
           'updateSerialNo',
           'callAudit',
-        ].includes(currentSection) && <CallManagementView initialMode={currentSection} />}
+        ].includes(currentSection) && (
+          <CallManagementView initialMode={currentSection} currentUser={user} />
+        )}
 
         {/* 5. Master Data Download */}
         {currentSection === 'download' && <DownloadView />}
 
         {/* 6. Uploader Views */}
-        {(currentSection === 'liveCallUpload' || currentSection === 'bulkExcelUpload') && <UploaderView />}
+        {(currentSection === 'liveCallUpload' || currentSection === 'bulkExcelUpload') && (
+          <UploaderView
+            key={currentSection}
+            initialMode={currentSection === 'bulkExcelUpload' ? 'bulkExcelUpload' : 'liveCallUpload'}
+            currentUser={user}
+          />
+        )}
 
         {/* 7. Reports Views */}
         {currentSection === 'reportMain' && <ReportsView />}
 
-        {/* 8. Users Views */}
+        {/* 8. Users & Role Master Views */}
         {(currentSection === 'createUser' || currentSection === 'updateUser') && (
-          <UserManagementView initialMode={currentSection} />
+          <UserManagementView initialMode={currentSection} currentUser={user} />
         )}
 
         {/* 9. Utilities & Settings Views */}
@@ -283,6 +254,9 @@ export default function Home() {
           />
         )}
         {currentSection === 'changePassword' && <ChangePasswordView user={user} />}
+        {currentSection === 'nomenclatureManagement' && (
+          <NomenclatureManagementView currentUser={user} />
+        )}
       </div>
     </div>
   );

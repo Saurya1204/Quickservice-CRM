@@ -2,10 +2,12 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IClient extends Document {
   clientCode: string;
+  legacyClientCode?: string;
   clientName: string;
   proprietorName?: string;
   status: 'A' | 'I';
   serviceArea?: string;
+  serviceAreas?: string[];
   registeredAddress?: string;
   landmark?: string;
   pincode?: string;
@@ -21,7 +23,7 @@ export interface IClient extends Document {
   cinNumber?: string;
   panNumber?: string;
   gstNumber?: string;
-  callCenter?: string;
+  callCenter?: 'Company Own' | 'Quick Serves' | 'Third Party' | string;
   noOfCallCentreSeat?: number;
   callCentreSeatCharge?: number;
   crmCharges?: number;
@@ -29,13 +31,15 @@ export interface IClient extends Document {
   warehouseChargePM?: number;
   minimumGuarantyPM?: number;
   managementFeeYearly?: number;
-  localConveyanceChargePerKM?: string;
+  localConveyanceChargePerKM?: number | string;
   paymentTerms?: string;
-  creditLimit?: string;
-  creditPeriod?: string;
+  creditLimit?: number | string;
+  creditPeriod?: number | string;
   agreementStartDate?: string;
   agreementRenewalDate?: string;
-  reconciliationPeriod?: string;
+  reconciliationPeriod?: 'Quarterly' | 'Half Yearly' | 'Yearly' | string;
+  createdBy?: string;
+  updatedBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,10 +47,12 @@ export interface IClient extends Document {
 const ClientSchema = new Schema<IClient>(
   {
     clientCode: { type: String, required: true, unique: true, uppercase: true, trim: true },
+    legacyClientCode: { type: String, default: '' },
     clientName: { type: String, required: true, trim: true },
     proprietorName: { type: String, default: '' },
     status: { type: String, enum: ['A', 'I'], default: 'A' },
     serviceArea: { type: String, default: 'Pan India' },
+    serviceAreas: [{ type: String }],
     registeredAddress: { type: String, default: '' },
     landmark: { type: String, default: '' },
     pincode: { type: String, default: '' },
@@ -62,7 +68,7 @@ const ClientSchema = new Schema<IClient>(
     cinNumber: { type: String, default: '' },
     panNumber: { type: String, default: '' },
     gstNumber: { type: String, default: '' },
-    callCenter: { type: String, default: 'Quickserves' },
+    callCenter: { type: String, default: 'Quick Serves' },
     noOfCallCentreSeat: { type: Number, default: 0 },
     callCentreSeatCharge: { type: Number, default: 0 },
     crmCharges: { type: Number, default: 0 },
@@ -70,13 +76,15 @@ const ClientSchema = new Schema<IClient>(
     warehouseChargePM: { type: Number, default: 0 },
     minimumGuarantyPM: { type: Number, default: 0 },
     managementFeeYearly: { type: Number, default: 0 },
-    localConveyanceChargePerKM: { type: String, default: '' },
+    localConveyanceChargePerKM: { type: Schema.Types.Mixed, default: 0 },
     paymentTerms: { type: String, default: 'Within 15 Days' },
-    creditLimit: { type: String, default: '6 Lac' },
-    creditPeriod: { type: String, default: '' },
+    creditLimit: { type: Schema.Types.Mixed, default: '600000' },
+    creditPeriod: { type: Schema.Types.Mixed, default: '30' },
     agreementStartDate: { type: String, default: '' },
     agreementRenewalDate: { type: String, default: '' },
-    reconciliationPeriod: { type: String, default: '' },
+    reconciliationPeriod: { type: String, default: 'Quarterly' },
+    createdBy: { type: String, default: 'Super Admin' },
+    updatedBy: { type: String, default: 'Super Admin' },
   },
   { timestamps: true }
 );
