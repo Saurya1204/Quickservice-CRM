@@ -373,24 +373,24 @@ export default function SparesMasterView() {
 
       {/* Spares Listing Table */}
       <div className="bg-[#111c2e] rounded-xl border border-[#24344d] overflow-hidden shadow-lg">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+        <div className="overflow-x-auto custom-horizontal-scrollbar">
+          <table className="w-full text-left text-xs text-slate-300 min-w-[1400px]">
             <thead className="bg-[#0d1624] text-[11px] uppercase tracking-wider text-slate-400 font-semibold border-b border-[#24344d]">
               <tr>
-                <th className="px-4 py-3">Client</th>
-                <th className="px-4 py-3">Brand</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3">Model No.</th>
-                <th className="px-4 py-3">Spare Name</th>
-                <th className="px-4 py-3">Part Description</th>
-                <th className="px-4 py-3">Part Code</th>
-                <th className="px-4 py-3">Part Category</th>
-                <th className="px-4 py-3">Returnable</th>
-                <th className="px-4 py-3 font-mono">Cust. Price</th>
-                <th className="px-4 py-3 font-mono">Price</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className="px-4 py-3 whitespace-nowrap">Client</th>
+                <th className="px-4 py-3 whitespace-nowrap">Brand</th>
+                <th className="px-4 py-3 whitespace-nowrap">Category</th>
+                <th className="px-4 py-3 whitespace-nowrap">Product</th>
+                <th className="px-4 py-3 whitespace-nowrap">Model No.</th>
+                <th className="px-4 py-3 whitespace-nowrap">Spare Name</th>
+                <th className="px-4 py-3 whitespace-nowrap">Part Description</th>
+                <th className="px-4 py-3 whitespace-nowrap">Part Code</th>
+                <th className="px-4 py-3 whitespace-nowrap">Part Category</th>
+                <th className="px-4 py-3 whitespace-nowrap">Returnable</th>
+                <th className="px-4 py-3 font-mono whitespace-nowrap">Cust. Price</th>
+                <th className="px-4 py-3 font-mono whitespace-nowrap">Price</th>
+                <th className="px-4 py-3 whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e2c42]">

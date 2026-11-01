@@ -37,8 +37,11 @@ export async function GET(req: Request) {
       ];
     }
 
-    const franchises = await Franchise.find(query).sort({ createdAt: -1 });
-    return NextResponse.json({ success: true, data: franchises, count: franchises.length });
+    const franchises = await Franchise.find(query).sort({ createdAt: -1 }).lean();
+    return NextResponse.json(
+      { success: true, data: franchises, count: franchises.length },
+      { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60' } }
+    );
   } catch (error: any) {
     console.error('Error fetching franchises:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

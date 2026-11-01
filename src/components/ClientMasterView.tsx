@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PincodeField from '@/components/common/PincodeLookup';
+import { getCachedData, fetchWithCache, invalidateCache } from '@/lib/clientCache';
 
 const CLIENT_DOCUMENT_TYPES = [
   'Address Proof',
@@ -146,9 +147,9 @@ function ServiceAreaDualList({ available, selected, onChange }: ServiceAreaDualL
   );
 }
 
-export default function ClientMasterView() {
-  const [clients, setClients] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function ClientMasterView({ currentUser }: { currentUser?: any } = {}) {
+  const [clients, setClients] = useState<any[]>(() => getCachedData('/api/masters/clients')?.data || []);
+  const [loading, setLoading] = useState<boolean>(() => !getCachedData('/api/masters/clients'));
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingClient, setEditingClient] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
@@ -214,12 +215,18 @@ export default function ClientMasterView() {
     fetchClients();
   }, []);
 
-  const fetchClients = async () => {
-    setLoading(true);
+  const fetchClients = async (forceRefresh = false) => {
+    const cached = getCachedData('/api/masters/clients');
+    if (!cached || forceRefresh) {
+      if (!cached) setLoading(true);
+    } else {
+      setClients(cached.data || []);
+      setLoading(false);
+    }
+
     try {
-      const res = await fetch('/api/masters/clients');
-      const json = await res.json();
-      if (json.success) {
+      const json = await fetchWithCache('/api/masters/clients', { forceRefresh });
+      if (json && json.success) {
         setClients(json.data || []);
       }
     } catch (e) {
@@ -258,7 +265,8 @@ export default function ClientMasterView() {
       const json = await res.json();
       if (json.success) {
         alert(json.message);
-        fetchClients();
+        invalidateCache('/api/masters/clients');
+        fetchClients(true);
       } else {
         alert(json.message);
       }
@@ -296,7 +304,8 @@ export default function ClientMasterView() {
           alert('Client updated successfully!');
           setShowAddForm(false);
           setEditingClient(null);
-          fetchClients();
+          invalidateCache('/api/masters/clients');
+          fetchClients(true);
         } else {
           alert(json.message);
         }
@@ -310,7 +319,8 @@ export default function ClientMasterView() {
         if (json.success) {
           alert(json.message || 'Client created successfully!');
           setShowAddForm(false);
-          fetchClients();
+          invalidateCache('/api/masters/clients');
+          fetchClients(true);
         } else {
           alert(json.message);
         }
@@ -441,18 +451,18 @@ export default function ClientMasterView() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => handleOpenDocModal()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-semibold rounded-lg shadow-lg shadow-red-900/30 transition active:scale-95"
-          >
-            <span>📁</span>
-            <span>Upload Document</span>
-          </button>
-          <button
             onClick={handleOpenAdd}
             className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-blue-900/30 transition active:scale-95"
           >
             <span>+</span>
             <span>ADD</span>
+          </button>
+          <button
+            onClick={() => handleOpenDocModal()}
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-semibold rounded-lg shadow-lg shadow-red-900/30 transition active:scale-95"
+          >
+            <span>📁</span>
+            <span>Upload Document</span>
           </button>
         </div>
       </div>
@@ -500,20 +510,26 @@ export default function ClientMasterView() {
 
           {/* Table */}
           <div className="bg-[#111c2e] rounded-xl border border-[#24344d] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="flex items-center justify-between text-[11px] text-slate-400 px-4 py-2.5 bg-[#0d1624]/80 border-b border-[#24344d]">
+              <span className="flex items-center gap-1.5 text-blue-400 font-medium">
+                <span>↔</span> Scroll sideways to view all columns (Contact, Email, GST, Period, Status, Actions)
+              </span>
+              <span className="text-slate-400 font-mono text-[10px]">Total Clients: {filteredClients.length}</span>
+            </div>
+            <div className="overflow-x-auto custom-horizontal-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[1250px]">
                 <thead>
                   <tr className="bg-[#0d1624] border-b border-[#24344d] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    <th className="py-3 px-4">Client ID</th>
-                    <th className="py-3 px-4">Client Name</th>
-                    <th className="py-3 px-4">Contact Person</th>
-                    <th className="py-3 px-4">Mobile Number</th>
-                    <th className="py-3 px-4">Email ID</th>
-                    <th className="py-3 px-4">State / City</th>
-                    <th className="py-3 px-4">GST Number</th>
-                    <th className="py-3 px-4">Agreement Period</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Client ID</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Client Name</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Contact Person</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Mobile Number</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Email ID</th>
+                    <th className="py-3 px-4 whitespace-nowrap">State / City</th>
+                    <th className="py-3 px-4 whitespace-nowrap">GST Number</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Agreement Period</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Status</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#24344d]/60 text-xs">
@@ -532,26 +548,26 @@ export default function ClientMasterView() {
                   ) : (
                     filteredClients.map((c) => (
                       <tr key={c._id} className="hover:bg-[#16233b]/50 transition">
-                        <td className="py-3 px-4 font-mono font-bold text-emerald-400">
+                        <td className="py-3 px-4 font-mono font-bold text-emerald-400 whitespace-nowrap">
                           {c.clientCode}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <div className="font-semibold text-white">{c.clientName}</div>
                           <div className="text-[11px] text-slate-400">
                             Prop: {c.proprietorName || 'N/A'} • {c.callCenter || 'Quick Serves'}
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-slate-300">{c.contactPerson || '-'}</td>
-                        <td className="py-3 px-4 text-slate-300 font-mono">{c.mobileNumber}</td>
-                        <td className="py-3 px-4 text-slate-300">{c.emailId || '-'}</td>
-                        <td className="py-3 px-4 text-slate-300">
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap">{c.contactPerson || '-'}</td>
+                        <td className="py-3 px-4 text-slate-300 font-mono whitespace-nowrap">{c.mobileNumber}</td>
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap">{c.emailId || '-'}</td>
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap">
                           {c.city ? `${c.city}, ${c.state}` : '-'}
                         </td>
-                        <td className="py-3 px-4 font-mono text-slate-400">{c.gstNumber || '-'}</td>
-                        <td className="py-3 px-4 text-slate-400">
+                        <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">{c.gstNumber || '-'}</td>
+                        <td className="py-3 px-4 text-slate-400 whitespace-nowrap">
                           {c.agreementStartDate ? `${c.agreementStartDate} to ${c.agreementRenewalDate || 'Ongoing'}` : '-'}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                               c.status === 'A'
@@ -562,7 +578,7 @@ export default function ClientMasterView() {
                             {c.status === 'A' ? 'ACTIVE' : 'INACTIVE'}
                           </span>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleOpenDocModal(c)}

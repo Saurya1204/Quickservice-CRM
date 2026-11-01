@@ -3,14 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import PincodeField from '@/components/common/PincodeLookup';
 import MasterDocumentModal, { UploadDocumentButton } from '@/components/common/MasterDocumentModal';
+import { getCachedData, fetchWithCache, invalidateCache } from '@/lib/clientCache';
 
 interface BranchMasterViewProps {
   currentUser?: any;
 }
 
 export default function BranchMasterView({ currentUser }: BranchMasterViewProps) {
-  const [branches, setBranches] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [branches, setBranches] = useState<any[]>(() => getCachedData('/api/masters/branches')?.data || []);
+  const [loading, setLoading] = useState<boolean>(() => !getCachedData('/api/masters/branches'));
   const [showAddForm, setShowAddForm] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDocsModal, setShowDocsModal] = useState(false);
@@ -103,18 +104,25 @@ export default function BranchMasterView({ currentUser }: BranchMasterViewProps)
     fetchBranches();
   }, [filterRegion, filterStatus]);
 
-  const fetchBranches = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (filterRegion !== 'ALL') params.set('region', filterRegion);
-      if (filterStatus !== 'ALL') params.set('status', filterStatus);
-      if (searchTerm) params.set('search', searchTerm);
+  const fetchBranches = async (forceRefresh = false) => {
+    const params = new URLSearchParams();
+    if (filterRegion !== 'ALL') params.set('region', filterRegion);
+    if (filterStatus !== 'ALL') params.set('status', filterStatus);
+    if (searchTerm) params.set('search', searchTerm);
 
-      const res = await fetch(`/api/masters/branches?${params.toString()}`);
-      const json = await res.json();
-      if (json.success) {
-        setBranches(json.data);
+    const url = `/api/masters/branches?${params.toString()}`;
+    const cached = getCachedData(url);
+    if (!cached || forceRefresh) {
+      if (!cached) setLoading(true);
+    } else {
+      setBranches(cached.data || []);
+      setLoading(false);
+    }
+
+    try {
+      const json = await fetchWithCache(url, { forceRefresh });
+      if (json && json.success) {
+        setBranches(json.data || []);
       }
     } catch (e) {
       console.error(e);
@@ -167,7 +175,8 @@ export default function BranchMasterView({ currentUser }: BranchMasterViewProps)
         if (json.success) {
           setShowAddForm(false);
           handleResetForm();
-          fetchBranches();
+          invalidateCache('/api/masters/branches');
+          fetchBranches(true);
           alert('Branch updated successfully!');
         } else {
           alert(json.message);
@@ -185,7 +194,8 @@ export default function BranchMasterView({ currentUser }: BranchMasterViewProps)
         if (json.success) {
           setShowAddForm(false);
           handleResetForm();
-          fetchBranches();
+          invalidateCache('/api/masters/branches');
+          fetchBranches(true);
           alert('Branch saved successfully!');
         } else {
           alert(json.message);
@@ -262,7 +272,8 @@ export default function BranchMasterView({ currentUser }: BranchMasterViewProps)
       const res = await fetch(`/api/masters/branches?id=${id}`, { method: 'DELETE' });
       const json = await res.json();
       if (json.success) {
-        fetchBranches();
+        invalidateCache('/api/masters/branches');
+        fetchBranches(true);
       } else {
         alert(json.message);
       }
@@ -1041,11 +1052,11 @@ export default function BranchMasterView({ currentUser }: BranchMasterViewProps)
                 No branch records found. Click "+ ADD BRANCH" to create one.
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-[#334155]">
-                <table className="w-full text-left text-xs text-slate-300">
+              <div className="overflow-x-auto custom-horizontal-scrollbar rounded-lg border border-[#334155]">
+                <table className="w-full text-left text-xs text-slate-300 min-w-[1250px]">
                   <thead className="bg-[#172033] text-slate-400 uppercase text-[10px] tracking-wider border-b border-[#334155]">
                     <tr>
-                      <th className="px-3 py-3 w-8 text-center">
+                      <th className="px-3 py-3 w-8 text-center whitespace-nowrap">
                         <input
                           type="checkbox"
                           onChange={handleSelectAll}
@@ -1053,11 +1064,11 @@ export default function BranchMasterView({ currentUser }: BranchMasterViewProps)
                           className="accent-emerald-500 rounded"
                         />
                       </th>
-                      <th className="px-3 py-3">CRM Code</th>
-                      <th className="px-3 py-3">Branch Name</th>
-                      <th className="px-3 py-3">Region</th>
-                      <th className="px-3 py-3">State</th>
-                      <th className="px-3 py-3">District</th>
+                      <th className="px-3 py-3 whitespace-nowrap">CRM Code</th>
+                      <th className="px-3 py-3 whitespace-nowrap">Branch Name</th>
+                      <th className="px-3 py-3 whitespace-nowrap">Region</th>
+                      <th className="px-3 py-3 whitespace-nowrap">State</th>
+                      <th className="px-3 py-3 whitespace-nowrap">District</th>
                       <th className="px-3 py-3">City</th>
                       <th className="px-3 py-3">PIN Code</th>
                       <th className="px-3 py-3">Branch Manager</th>

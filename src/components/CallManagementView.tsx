@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PincodeField from '@/components/common/PincodeLookup';
+import CallRegistrationModule from '@/components/CallRegistrationModule';
 
 interface CallManagementProps {
   initialMode?: string;
@@ -567,163 +568,16 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
           </div>
         )}
 
-        {/* MODE 1: CALL REGISTRATION */}
+        {/* MODE 1: CALL REGISTRATION – REPLICATING OLD CRM ENHANCED WORKFLOW */}
         {activeTab === 'callRegistration' && (
-          <form onSubmit={handleRegisterCall} className="bg-[#172033] p-6 rounded-xl border border-[#334155] space-y-4">
-            <h3 className="text-sm font-semibold text-emerald-400">Register New Service Call</h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Customer Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter Customer Name"
-                  value={newCall.customerName}
-                  onChange={(e) => setNewCall({ ...newCall, customerName: e.target.value })}
-                  className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Customer Mobile *</label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="10-digit Mobile"
-                  value={newCall.customerMobile}
-                  onChange={(e) => setNewCall({ ...newCall, customerMobile: e.target.value })}
-                  className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">PIN Code (Auto-Lookup)</label>
-                <PincodeField
-                  pincode={newCall.pincode}
-                  onPincodeChange={(pin) => setNewCall((prev) => ({ ...prev, pincode: pin }))}
-                  onLocationFound={(loc) =>
-                    setNewCall((prev) => ({
-                      ...prev,
-                      city: loc.city,
-                      state: loc.state,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">City</label>
-                <input
-                  type="text"
-                  value={newCall.city}
-                  onChange={(e) => setNewCall({ ...newCall, city: e.target.value })}
-                  className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">State</label>
-                <input
-                  type="text"
-                  value={newCall.state}
-                  onChange={(e) => setNewCall({ ...newCall, state: e.target.value })}
-                  className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Client Name</label>
-                <input
-                  type="text"
-                  value={newCall.clientName}
-                  onChange={(e) => setNewCall({ ...newCall, clientName: e.target.value })}
-                  className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Brand</label>
-                <input
-                  type="text"
-                  value={newCall.brandName}
-                  onChange={(e) => setNewCall({ ...newCall, brandName: e.target.value })}
-                  className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Category</label>
-                <select
-                  value={newCall.categoryName}
-                  onChange={(e) => setNewCall({ ...newCall, categoryName: e.target.value })}
-                  className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                >
-                  {masterCategories.map((cat) => (
-                    <option key={cat._id} value={cat.categoryName}>
-                      {cat.categoryName}
-                    </option>
-                  ))}
-                  {masterCategories.length === 0 && <option value="Air Conditioner">Air Conditioner</option>}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Initial Technician (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. PRASHANT GUPTA"
-                  value={newCall.technicianName}
-                  onChange={(e) => setNewCall({ ...newCall, technicianName: e.target.value })}
-                  className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Customer Address</label>
-              <textarea
-                rows={2}
-                placeholder="House/Flat No, Street, Society, Landmark"
-                value={newCall.customerAddress}
-                onChange={(e) => setNewCall({ ...newCall, customerAddress: e.target.value })}
-                className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Reported Fault Description *</label>
-              <input
-                type="text"
-                required
-                placeholder="Describe the complaint reported by customer"
-                value={newCall.reportedFault}
-                onChange={(e) => setNewCall({ ...newCall, reportedFault: e.target.value })}
-                className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setActiveTab('callView')}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={registering}
-                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
-              >
-                {registering ? 'Registering...' : 'Register Call'}
-              </button>
-            </div>
-          </form>
+          <CallRegistrationModule
+            currentUser={currentUser}
+            onCallRegistered={() => {
+              fetchCalls();
+              setActiveTab('callView');
+            }}
+            onCancel={() => setActiveTab('callView')}
+          />
         )}
 
         {/* MODE 2: CALL VIEW / REOPEN / ALLOTMENT */}
@@ -759,23 +613,23 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
               />
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-[#334155]">
+            <div className="overflow-x-auto custom-horizontal-scrollbar rounded-lg border border-[#334155]">
               {loading ? (
                 <div className="p-8 text-center text-slate-400 text-xs">Loading service calls...</div>
               ) : filteredCalls.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 text-xs">No service calls found.</div>
               ) : (
-                <table className="w-full text-left text-xs text-slate-300">
+                <table className="w-full text-left text-xs text-slate-300 min-w-[1200px]">
                   <thead className="bg-[#172033] text-slate-400 uppercase text-[10px] tracking-wider border-b border-[#334155]">
                     <tr>
-                      <th className="p-3">Call No</th>
-                      <th className="p-3">Customer</th>
-                      <th className="p-3">City / PIN</th>
-                      <th className="p-3">Product / Category</th>
-                      <th className="p-3">Reported Fault</th>
-                      <th className="p-3">Technician</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 text-right">Actions</th>
+                      <th className="p-3 whitespace-nowrap">Call No</th>
+                      <th className="p-3 whitespace-nowrap">Customer</th>
+                      <th className="p-3 whitespace-nowrap">City / PIN</th>
+                      <th className="p-3 whitespace-nowrap">Product / Category</th>
+                      <th className="p-3 whitespace-nowrap">Reported Fault</th>
+                      <th className="p-3 whitespace-nowrap">Technician</th>
+                      <th className="p-3 whitespace-nowrap">Status</th>
+                      <th className="p-3 whitespace-nowrap text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#334155]/60">

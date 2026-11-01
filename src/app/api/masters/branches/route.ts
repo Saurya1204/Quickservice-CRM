@@ -29,8 +29,11 @@ export async function GET(req: Request) {
       ];
     }
 
-    const branches = await Branch.find(query).sort({ createdAt: -1 });
-    return NextResponse.json({ success: true, data: branches });
+    const branches = await Branch.find(query).sort({ createdAt: -1 }).lean();
+    return NextResponse.json(
+      { success: true, data: branches },
+      { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60' } }
+    );
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }

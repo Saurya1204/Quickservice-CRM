@@ -26,8 +26,11 @@ export async function GET(req: Request) {
       query.$or = [{ brandName: regex }, { brandCode: regex }, { clientName: regex }];
     }
 
-    const brands = await Brand.find(query).sort({ createdAt: -1 });
-    return NextResponse.json({ success: true, data: brands });
+    const brands = await Brand.find(query).sort({ createdAt: -1 }).lean();
+    return NextResponse.json(
+      { success: true, data: brands },
+      { headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' } }
+    );
   } catch (error: any) {
     console.error('Error fetching brands:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

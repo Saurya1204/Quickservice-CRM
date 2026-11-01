@@ -30,6 +30,32 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #64748b;
 }
+
+/* Enhanced Horizontal Scrollbar across all master dashboards */
+.overflow-x-auto,
+.custom-horizontal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #2563eb #0d1624;
+}
+.overflow-x-auto::-webkit-scrollbar,
+.custom-horizontal-scrollbar::-webkit-scrollbar {
+  height: 9px;
+  width: 10px;
+}
+.overflow-x-auto::-webkit-scrollbar-track,
+.custom-horizontal-scrollbar::-webkit-scrollbar-track {
+  background: #0d1624;
+  border-radius: 4px;
+}
+.overflow-x-auto::-webkit-scrollbar-thumb,
+.custom-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  background: #2563eb;
+  border-radius: 4px;
+}
+.overflow-x-auto::-webkit-scrollbar-thumb:hover,
+.custom-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
+}
 ::-webkit-scrollbar-button:single-button:vertical:decrement {
   height: 14px;
   width: 10px;

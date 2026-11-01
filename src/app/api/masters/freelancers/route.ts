@@ -43,18 +43,22 @@ export async function GET(req: Request) {
     const freelancers = await Freelancer.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
-    return NextResponse.json({
-      success: true,
-      data: freelancers,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit) || 1,
+    return NextResponse.json(
+      {
+        success: true,
+        data: freelancers,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit) || 1,
+        },
       },
-    });
+      { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60' } }
+    );
   } catch (error: any) {
     console.error('Error fetching freelancers:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

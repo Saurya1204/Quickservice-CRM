@@ -34,6 +34,59 @@ export interface IServiceCall extends Document {
   cancelledDate?: Date;
   cancellationReason?: string;
   cancelledBy?: string;
+
+  // Older CRM Enhancement Fields
+  // Section A: Basic Details
+  callRegisterBy?: string;
+  callSource?: string;
+
+  // Section B: Customer Details
+  customerTitle?: string;
+  customerFirstName?: string;
+  customerLastName?: string;
+  customerAddress1?: string;
+  landmark?: string;
+  district?: string;
+
+  // Section C: Contact Details
+  customerEmail?: string;
+  contactPersonName?: string;
+  contactPersonMobile?: string;
+  languages?: string[];
+
+  // Section D: Dealer Details
+  dealerName?: string;
+  dealerCity?: string;
+  dealerMobile?: string;
+  dealerEmail?: string;
+  invoiceNo?: string;
+  dealerDOP?: string;
+
+  // Section E: Product Details
+  unitSerialNumber?: string;
+  productDOP?: string;
+  warrantyStatus?: string;
+  stockOf?: string;
+  purchaseOrderNo?: string;
+  clientId?: string;
+  brandId?: string;
+  productId?: string;
+  modelId?: string;
+
+  // Section F: Complaint Details
+  callType?: string;
+  complaintPriority?: string;
+  callNature?: string;
+  visitType?: string;
+  lastComplaintNo?: string;
+  complaintDescription?: string;
+  specialInstruction?: string;
+  serviceProviderType?: string;
+  serviceProviderName?: string;
+  promiseDate?: string;
+  promiseTime?: string;
+  registeredBy?: string;
+
   replacementDetails?: {
     replacementType?: string;
     oldPartOrProduct?: string;
@@ -94,6 +147,47 @@ const ServiceCallSchema = new Schema<IServiceCall>(
       replacementReason: { type: String, default: '' },
       replacementDate: { type: Date },
     },
+    // Older CRM Enhancement Fields
+    callRegisterBy: { type: String, default: 'Customer' },
+    callSource: { type: String, default: 'Call Centre' },
+    customerTitle: { type: String, default: 'Mr' },
+    customerFirstName: { type: String, default: '' },
+    customerLastName: { type: String, default: '' },
+    customerAddress1: { type: String, default: '' },
+    landmark: { type: String, default: '' },
+    district: { type: String, default: '' },
+    customerEmail: { type: String, default: '' },
+    contactPersonName: { type: String, default: '' },
+    contactPersonMobile: { type: String, default: '' },
+    languages: { type: [String], default: [] },
+    dealerName: { type: String, default: '' },
+    dealerCity: { type: String, default: '' },
+    dealerMobile: { type: String, default: '' },
+    dealerEmail: { type: String, default: '' },
+    invoiceNo: { type: String, default: '' },
+    dealerDOP: { type: String, default: '' },
+    unitSerialNumber: { type: String, default: '' },
+    productDOP: { type: String, default: '' },
+    warrantyStatus: { type: String, default: 'Under Warranty' },
+    stockOf: { type: String, default: 'Customer Stock' },
+    purchaseOrderNo: { type: String, default: '' },
+    clientId: { type: String, default: '' },
+    brandId: { type: String, default: '' },
+    productId: { type: String, default: '' },
+    modelId: { type: String, default: '' },
+    callType: { type: String, default: 'Service' },
+    complaintPriority: { type: String, default: 'Normal complaint' },
+    callNature: { type: String, default: 'Normal' },
+    visitType: { type: String, default: 'On site - Local' },
+    lastComplaintNo: { type: String, default: '' },
+    complaintDescription: { type: String, default: '' },
+    specialInstruction: { type: String, default: '' },
+    serviceProviderType: { type: String, default: 'Branch' },
+    serviceProviderName: { type: String, default: '' },
+    promiseDate: { type: String, default: '' },
+    promiseTime: { type: String, default: '9-11 AM' },
+    registeredBy: { type: String, default: 'Call Coordinator' },
+
     callStatus: {
       type: String,
       enum: ['OPEN', 'APPOINTMENT', 'ALLOTED', 'PART_PENDING', 'COMPLETED', 'CANCEL', 'REOPENED'],

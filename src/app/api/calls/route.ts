@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { ServiceCall } from '@/models/ServiceCall';
 import { AuditLog } from '@/models/AuditLog';
+import { NomenclatureService } from '@/lib/nomenclatureService';
 
 export async function GET(req: Request) {
   try {
@@ -12,6 +13,12 @@ export async function GET(req: Request) {
     const branch = searchParams.get('branch');
     const region = searchParams.get('region');
     const city = searchParams.get('city');
+
+    // Call Registration specific search parameters
+    const name = searchParams.get('name');
+    const mobile = searchParams.get('mobile');
+    const complaintNo = searchParams.get('complaintNo');
+    const serialNo = searchParams.get('serialNo');
 
     const query: any = {};
 
@@ -35,18 +42,72 @@ export async function GET(req: Request) {
       query.city = { $regex: new RegExp(`^${city}$`, 'i') };
     }
 
-    if (search) {
+    // Specific Call Registration Search
+    const searchConditions: any[] = [];
+
+    if (name && name.trim()) {
+      const nameRegex = { $regex: name.trim(), $options: 'i' };
+      searchConditions.push({
+        $or: [
+          { customerName: nameRegex },
+          { customerFirstName: nameRegex },
+          { customerLastName: nameRegex },
+          { contactPersonName: nameRegex },
+        ],
+      });
+    }
+
+    if (mobile && mobile.trim()) {
+      const mobileRegex = { $regex: mobile.trim(), $options: 'i' };
+      searchConditions.push({
+        $or: [
+          { customerMobile: mobileRegex },
+          { contactPersonMobile: mobileRegex },
+          { dealerMobile: mobileRegex },
+        ],
+      });
+    }
+
+    if (complaintNo && complaintNo.trim()) {
+      const callNoRegex = { $regex: complaintNo.trim(), $options: 'i' };
+      searchConditions.push({
+        $or: [
+          { callNo: callNoRegex },
+          { lastComplaintNo: callNoRegex },
+        ],
+      });
+    }
+
+    if (serialNo && serialNo.trim()) {
+      const snRegex = { $regex: serialNo.trim(), $options: 'i' };
+      searchConditions.push({
+        $or: [
+          { serialNo: snRegex },
+          { unitSerialNumber: snRegex },
+        ],
+      });
+    }
+
+    if (searchConditions.length > 0) {
+      query.$and = searchConditions;
+    } else if (search && search.trim()) {
+      const searchRegex = { $regex: search.trim(), $options: 'i' };
       query.$or = [
-        { callNo: { $regex: search, $options: 'i' } },
-        { customerName: { $regex: search, $options: 'i' } },
-        { customerMobile: { $regex: search, $options: 'i' } },
-        { brandName: { $regex: search, $options: 'i' } },
-        { city: { $regex: search, $options: 'i' } },
+        { callNo: searchRegex },
+        { customerName: searchRegex },
+        { customerMobile: searchRegex },
+        { brandName: searchRegex },
+        { city: searchRegex },
+        { serialNo: searchRegex },
+        { unitSerialNumber: searchRegex },
       ];
     }
 
-    const calls = await ServiceCall.find(query).sort({ createdAt: -1 });
-    return NextResponse.json({ success: true, data: calls });
+    const calls = await ServiceCall.find(query).sort({ createdAt: -1 }).lean();
+    return NextResponse.json(
+      { success: true, data: calls },
+      { headers: { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30' } }
+    );
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
@@ -79,16 +140,56 @@ export async function POST(req: Request) {
       });
     }
 
-    if (!body.customerName || !body.customerMobile) {
+    // Auto-compose customerName from first + last name if missing
+    if (!body.customerName && body.customerFirstName) {
+      const title = body.customerTitle ? `${body.customerTitle} ` : '';
+      body.customerName = `${title}${body.customerFirstName} ${body.customerLastName || ''}`.trim();
+    }
+
+    // Auto-compose customerAddress from address1 + landmark if missing
+    if (!body.customerAddress && body.customerAddress1) {
+      body.customerAddress = `${body.customerAddress1}${body.landmark ? ', Landmark: ' + body.landmark : ''}`.trim();
+    }
+
+    // Auto-map complaintDescription to reportedFault
+    if (!body.reportedFault && body.complaintDescription) {
+      body.reportedFault = body.complaintDescription;
+    }
+
+    // Auto-map unitSerialNumber to serialNo
+    if (!body.serialNo && body.unitSerialNumber) {
+      body.serialNo = body.unitSerialNumber;
+    }
+
+    const customerMobile = body.customerMobile || body.mobile;
+    const customerName = body.customerName || body.customerFirstName;
+
+    if (!customerName || !customerMobile) {
       return NextResponse.json(
-        { success: false, message: 'Customer Name and Mobile are required' },
+        { success: false, message: 'Customer Name and Mobile Number are mandatory' },
         { status: 400 }
       );
     }
 
+    body.customerName = customerName;
+    body.customerMobile = customerMobile;
+    body.customerAddress = body.customerAddress || body.customerAddress1 || 'N/A';
+    body.city = body.city || 'N/A';
+    body.state = body.state || 'N/A';
+    body.pincode = body.pincode || 'N/A';
+    body.clientName = body.clientName || 'N/A';
+    body.brandName = body.brandName || 'N/A';
+    body.categoryName = body.categoryName || 'N/A';
+    body.reportedFault = body.reportedFault || body.complaintDescription || 'General Service';
+
+    // Concurrency-safe unique complaint number generation
     if (!body.callNo) {
-      const count = await ServiceCall.countDocuments();
-      body.callNo = `QS-CALL-${1000 + count + 1}`;
+      try {
+        body.callNo = await NomenclatureService.getNextCode('Service Call');
+      } catch (nomErr) {
+        const count = await ServiceCall.countDocuments();
+        body.callNo = `QS-CALL-${1000 + count + 1}`;
+      }
     }
 
     const newCall = await ServiceCall.create(body);
@@ -98,13 +199,13 @@ export async function POST(req: Request) {
       module: 'callManagement',
       entityId: newCall._id.toString(),
       entityName: `Call #${newCall.callNo}`,
-      performedBy: body.createdBy || 'Call Coordinator',
+      performedBy: body.registeredBy || body.createdBy || 'Call Coordinator',
     });
 
     return NextResponse.json({
       success: true,
       data: newCall,
-      message: 'Service Call registered successfully',
+      message: `Service Call registered successfully with Call No: ${newCall.callNo}`,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

@@ -70,3 +70,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    await connectDB();
+    const { searchParams } = new URL(req.url);
+    const clientId = searchParams.get('clientId');
+    const brandId = searchParams.get('brandId');
+    const id = searchParams.get('id');
+
+    if (id) {
+      await ClientBrandCategoryMapping.findByIdAndDelete(id);
+      return NextResponse.json({ success: true, message: 'Product Category Mapping deleted successfully' });
+    }
+
+    if (!clientId || !brandId) {
+      return NextResponse.json(
+        { success: false, message: 'clientId and brandId (or mapping id) are required' },
+        { status: 400 }
+      );
+    }
+
+    await ClientBrandCategoryMapping.findOneAndDelete({ clientId, brandId });
+    return NextResponse.json({ success: true, message: 'Product Category Mapping deleted successfully' });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}

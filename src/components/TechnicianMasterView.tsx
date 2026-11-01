@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import PincodeField from '@/components/common/PincodeLookup';
+import { getCachedData, fetchWithCache, invalidateCache } from '@/lib/clientCache';
 
 const TECHNICIAN_DOCUMENT_TYPES = [
   'Technician Photo Upload',
@@ -122,10 +123,10 @@ function LanguageDualList({ available, selected, onChange }: LanguageDualListPro
   );
 }
 
-export default function TechnicianMasterView() {
-  const [technicians, setTechnicians] = useState<any[]>([]);
-  const [branches, setBranches] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function TechnicianMasterView({ currentUser }: { currentUser?: any } = {}) {
+  const [technicians, setTechnicians] = useState<any[]>(() => getCachedData('/api/masters/technicians')?.data || []);
+  const [branches, setBranches] = useState<any[]>(() => getCachedData('/api/masters/branches')?.data || []);
+  const [loading, setLoading] = useState<boolean>(() => !getCachedData('/api/masters/technicians'));
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTechnician, setEditingTechnician] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
@@ -198,12 +199,18 @@ export default function TechnicianMasterView() {
     fetchBranches();
   }, []);
 
-  const fetchTechnicians = async () => {
-    setLoading(true);
+  const fetchTechnicians = async (forceRefresh = false) => {
+    const cached = getCachedData('/api/masters/technicians');
+    if (!cached || forceRefresh) {
+      if (!cached) setLoading(true);
+    } else {
+      setTechnicians(cached.data || []);
+      setLoading(false);
+    }
+
     try {
-      const res = await fetch('/api/masters/technicians');
-      const json = await res.json();
-      if (json.success) {
+      const json = await fetchWithCache('/api/masters/technicians', { forceRefresh });
+      if (json && json.success) {
         setTechnicians(json.data || []);
       }
     } catch (e) {
@@ -215,9 +222,8 @@ export default function TechnicianMasterView() {
 
   const fetchBranches = async () => {
     try {
-      const res = await fetch('/api/masters/branches');
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
+      const json = await fetchWithCache('/api/masters/branches');
+      if (json && json.success && Array.isArray(json.data)) {
         setBranches(json.data);
       }
     } catch (e) {
@@ -248,7 +254,8 @@ export default function TechnicianMasterView() {
       const json = await res.json();
       if (json.success) {
         alert(json.message);
-        fetchTechnicians();
+        invalidateCache('/api/masters/technicians');
+        fetchTechnicians(true);
       } else {
         alert(json.message);
       }
@@ -282,7 +289,8 @@ export default function TechnicianMasterView() {
           alert('Technician updated successfully!');
           setShowAddForm(false);
           setEditingTechnician(null);
-          fetchTechnicians();
+          invalidateCache('/api/masters/technicians');
+          fetchTechnicians(true);
         } else {
           alert(json.message);
         }
@@ -296,7 +304,8 @@ export default function TechnicianMasterView() {
         if (json.success) {
           alert(json.message || 'Technician created successfully!');
           setShowAddForm(false);
-          fetchTechnicians();
+          invalidateCache('/api/masters/technicians');
+          fetchTechnicians(true);
         } else {
           alert(json.message);
         }
@@ -427,18 +436,18 @@ export default function TechnicianMasterView() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => handleOpenDocModal()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-semibold rounded-lg shadow-lg shadow-red-900/30 transition active:scale-95"
-          >
-            <span>📁</span>
-            <span>Upload Document</span>
-          </button>
-          <button
             onClick={handleOpenAdd}
             className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-blue-900/30 transition active:scale-95"
           >
             <span>+</span>
             <span>ADD</span>
+          </button>
+          <button
+            onClick={() => handleOpenDocModal()}
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-semibold rounded-lg shadow-lg shadow-red-900/30 transition active:scale-95"
+          >
+            <span>📁</span>
+            <span>Upload Document</span>
           </button>
         </div>
       </div>
@@ -499,21 +508,27 @@ export default function TechnicianMasterView() {
 
           {/* Table */}
           <div className="bg-[#111c2e] rounded-xl border border-[#24344d] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="flex items-center justify-between text-[11px] text-slate-400 px-4 py-2.5 bg-[#0d1624]/80 border-b border-[#24344d]">
+              <span className="flex items-center gap-1.5 text-blue-400 font-medium">
+                <span>↔</span> Scroll sideways to view all columns (Contact, Email, Experience, Status, Actions)
+              </span>
+              <span className="text-slate-400 font-mono text-[10px]">Total Technicians: {filteredTechnicians.length}</span>
+            </div>
+            <div className="overflow-x-auto custom-horizontal-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[1350px]">
                 <thead>
                   <tr className="bg-[#0d1624] border-b border-[#24344d] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    <th className="py-3 px-4">Technician CRM Code</th>
-                    <th className="py-3 px-4">Technician Name</th>
-                    <th className="py-3 px-4">Branch</th>
-                    <th className="py-3 px-4">Region</th>
-                    <th className="py-3 px-4">Contact Number</th>
-                    <th className="py-3 px-4">Email ID</th>
-                    <th className="py-3 px-4">State / District / City</th>
-                    <th className="py-3 px-4">Joining Date</th>
-                    <th className="py-3 px-4">Experience</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Technician CRM Code</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Technician Name</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Branch</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Region</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Contact Number</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Email ID</th>
+                    <th className="py-3 px-4 whitespace-nowrap">State / District / City</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Joining Date</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Experience</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Status</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#24344d]/60 text-xs">
@@ -532,36 +547,35 @@ export default function TechnicianMasterView() {
                   ) : (
                     filteredTechnicians.map((t) => (
                       <tr key={t._id} className="hover:bg-[#16233b]/50 transition">
-                        <td className="py-3 px-4 font-mono font-bold text-emerald-400">
+                        <td className="py-3 px-4 font-mono font-bold text-emerald-400 whitespace-nowrap">
                           {t.crmCode}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <div className="font-semibold text-white">{t.technicianName}</div>
                           <div className="text-[11px] text-slate-400">{t.skillSet || 'Technical Staff'}</div>
                         </td>
-                        <td className="py-3 px-4 text-slate-300">{t.branchName || '-'}</td>
-                        <td className="py-3 px-4 text-slate-300">{t.region}</td>
-                        <td className="py-3 px-4 text-slate-300 font-mono">{t.contactNumber}</td>
-                        <td className="py-3 px-4 text-slate-300">{t.emailId || '-'}</td>
-                        <td className="py-3 px-4 text-slate-300">
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap">{t.branchName || '-'}</td>
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap">{t.region}</td>
+                        <td className="py-3 px-4 text-slate-300 font-mono whitespace-nowrap">{t.contactNumber}</td>
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap">{t.emailId || '-'}</td>
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap">
                           {t.city ? `${t.city}, ${t.state}` : '-'}
                         </td>
-                        <td className="py-3 px-4 text-slate-400">{t.dateOfJoining || '-'}</td>
-                        <td className="py-3 px-4 text-slate-400">
+                        <td className="py-3 px-4 text-slate-400 whitespace-nowrap">{t.dateOfJoining || '-'}</td>
+                        <td className="py-3 px-4 text-slate-400 whitespace-nowrap">
                           {t.experienceInYears ? `${t.experienceInYears} Yrs` : '-'}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              t.status === 'A'
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${t.status === 'A'
                                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                                 : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            }`}
+                              }`}
                           >
                             {t.status === 'A' ? 'ACTIVE' : 'INACTIVE'}
                           </span>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleOpenDocModal(t)}

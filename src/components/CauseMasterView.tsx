@@ -272,16 +272,16 @@ export default function CauseMasterView() {
 
       {/* Table */}
       <div className="bg-[#111c2e] rounded-xl border border-[#24344d] overflow-hidden shadow-lg">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+        <div className="overflow-x-auto custom-horizontal-scrollbar">
+          <table className="w-full text-left text-xs text-slate-300 min-w-[900px]">
             <thead className="bg-[#0d1624] text-[11px] uppercase tracking-wider text-slate-400 font-semibold border-b border-[#24344d]">
               <tr>
-                <th className="px-4 py-3">Cause ID</th>
-                <th className="px-4 py-3">Product Category</th>
-                <th className="px-4 py-3">Symptom</th>
-                <th className="px-4 py-3">Cause</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className="px-4 py-3 whitespace-nowrap">Cause ID</th>
+                <th className="px-4 py-3 whitespace-nowrap">Product Category</th>
+                <th className="px-4 py-3 whitespace-nowrap">Symptom</th>
+                <th className="px-4 py-3 whitespace-nowrap">Cause</th>
+                <th className="px-4 py-3 whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e2c42]">

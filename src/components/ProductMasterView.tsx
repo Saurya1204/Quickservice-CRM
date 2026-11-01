@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { getCachedData, fetchWithCache, invalidateCache } from '@/lib/clientCache';
 
 interface ClientItem {
   _id: string;
@@ -28,11 +29,11 @@ interface ProductItem {
 }
 
 export default function ProductMasterView() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [clients, setClients] = useState<ClientItem[]>([]);
-  const [brands, setBrands] = useState<BrandItem[]>([]);
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<any[]>(() => getCachedData('/api/masters/products')?.data || []);
+  const [clients, setClients] = useState<ClientItem[]>(() => (getCachedData('/api/masters/clients')?.data || []).filter((c: any) => c.status === 'A'));
+  const [brands, setBrands] = useState<BrandItem[]>(() => (getCachedData('/api/masters/brands')?.data || []).filter((b: any) => b.status === 'A'));
+  const [categories, setCategories] = useState<CategoryItem[]>(() => (getCachedData('/api/masters/categories')?.data || []).filter((c: any) => c.status === 'A'));
+  const [loading, setLoading] = useState<boolean>(() => !getCachedData('/api/masters/products'));
   const [showAddForm, setShowAddForm] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -66,19 +67,13 @@ export default function ProductMasterView() {
   }, []);
 
   const fetchInitialData = async () => {
-    setLoading(true);
     try {
-      const [prodRes, clientRes, brandRes, catRes] = await Promise.all([
-        fetch('/api/masters/products'),
-        fetch('/api/masters/clients'),
-        fetch('/api/masters/brands'),
-        fetch('/api/masters/categories'),
+      const [prodJson, clientJson, brandJson, catJson] = await Promise.all([
+        fetchWithCache('/api/masters/products').catch(() => ({ data: [] })),
+        fetchWithCache('/api/masters/clients').catch(() => ({ data: [] })),
+        fetchWithCache('/api/masters/brands').catch(() => ({ data: [] })),
+        fetchWithCache('/api/masters/categories').catch(() => ({ data: [] })),
       ]);
-
-      const prodJson = await prodRes.json();
-      const clientJson = await clientRes.json();
-      const brandJson = await brandRes.json();
-      const catJson = await catRes.json();
 
       setProducts(prodJson.data || []);
       setClients((clientJson.data || []).filter((c: any) => c.status === 'A'));
@@ -93,9 +88,8 @@ export default function ProductMasterView() {
 
   const fetchProductsList = async () => {
     try {
-      const res = await fetch('/api/masters/products');
-      const json = await res.json();
-      if (json.success) {
+      const json = await fetchWithCache('/api/masters/products', { forceRefresh: true });
+      if (json && json.success) {
         setProducts(json.data || []);
       }
     } catch (e) {
@@ -236,6 +230,7 @@ export default function ProductMasterView() {
       const json = await res.json();
       if (json.success) {
         alert(json.message);
+        invalidateCache('/api/masters/products');
         fetchProductsList();
       } else {
         alert(json.message);
@@ -273,6 +268,7 @@ export default function ProductMasterView() {
       if (json.success) {
         alert('Products assigned successfully!');
         setShowAddForm(false);
+        invalidateCache('/api/masters/products');
         fetchProductsList();
       } else {
         alert(json.message);
@@ -396,18 +392,24 @@ export default function ProductMasterView() {
 
           {/* Table */}
           <div className="bg-[#111c2e] rounded-xl border border-[#24344d] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="flex items-center justify-between text-[11px] text-slate-400 px-4 py-2 bg-[#0d1624]/80 border-b border-[#24344d]">
+              <span className="flex items-center gap-1.5 text-blue-400 font-medium">
+                <span>↔</span> Scroll sideways to view all columns
+              </span>
+              <span className="text-slate-400 font-mono text-[10px]">Total: {filteredProducts.length}</span>
+            </div>
+            <div className="overflow-x-auto custom-horizontal-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[1150px]">
                 <thead>
                   <tr className="bg-[#0d1624] border-b border-[#24344d] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    <th className="py-3 px-4">Product ID</th>
-                    <th className="py-3 px-4">Product Name</th>
-                    <th className="py-3 px-4">Client Name</th>
-                    <th className="py-3 px-4">Brand Name</th>
-                    <th className="py-3 px-4">Category Name</th>
-                    <th className="py-3 px-4">Created Date</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Product ID</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Product Name</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Client Name</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Brand Name</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Category Name</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Created Date</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Status</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#24344d]/60 text-xs">

@@ -59,29 +59,32 @@ export async function GET(req: Request) {
       Technician.countDocuments(techFilter),
     ]);
 
-    return NextResponse.json({
-      success: true,
-      stats: {
-        openCalls,
-        appointmentCalls,
-        allotedCalls,
-        partPendingCalls,
-        completedCalls: completedCalls || 1280,
-        cancelCalls: cancelCalls || 22,
-        reopenedCalls: reopenedCalls || 3,
-        criticalPendingCalls: criticalPendingCalls || 151,
-        activeBranches: activeBranches || 12,
-        activeFranchises: activeFranchises || 48,
-        activeTechnicians: activeTechnicians || 320,
-        sparesValuation: '₹ 42.5 L',
+    return NextResponse.json(
+      {
+        success: true,
+        stats: {
+          openCalls,
+          appointmentCalls,
+          allotedCalls,
+          partPendingCalls,
+          completedCalls: completedCalls || 1280,
+          cancelCalls: cancelCalls || 22,
+          reopenedCalls: reopenedCalls || 3,
+          criticalPendingCalls: criticalPendingCalls || 151,
+          activeBranches: activeBranches || 12,
+          activeFranchises: activeFranchises || 48,
+          activeTechnicians: activeTechnicians || 320,
+          sparesValuation: '₹ 42.5 L',
+        },
+        scope: {
+          role,
+          zone: zone || 'All',
+          branch: branch || 'All',
+          city: city || 'All',
+        },
       },
-      scope: {
-        role,
-        zone: zone || 'All',
-        branch: branch || 'All',
-        city: city || 'All',
-      },
-    });
+      { headers: { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30' } }
+    );
   } catch (error: any) {
     console.error('Stats error:', error);
     return NextResponse.json(

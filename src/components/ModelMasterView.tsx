@@ -474,21 +474,27 @@ export default function ModelMasterView() {
 
       {/* Model Records Table */}
       <div className="bg-[#111c2e] rounded-xl border border-[#24344d] overflow-hidden shadow-lg">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+        <div className="flex items-center justify-between text-[11px] text-slate-400 px-4 py-2 bg-[#0d1624]/80 border-b border-[#24344d]">
+          <span className="flex items-center gap-1.5 text-blue-400 font-medium">
+            <span>↔</span> Scroll sideways to view all model specifications and actions
+          </span>
+          <span className="text-slate-400 font-mono text-[10px]">Total Models: {models.length}</span>
+        </div>
+        <div className="overflow-x-auto custom-horizontal-scrollbar">
+          <table className="w-full text-left text-xs text-slate-300 min-w-[1300px]">
             <thead className="bg-[#0d1624] text-[11px] uppercase tracking-wider text-slate-400 font-semibold border-b border-[#24344d]">
               <tr>
-                <th className="px-4 py-3">Client</th>
-                <th className="px-4 py-3">Brand</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3">Model No.</th>
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3">Mfg. Dates</th>
-                <th className="px-4 py-3">Serial Limits</th>
-                <th className="px-4 py-3">Warranty</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className="px-4 py-3 whitespace-nowrap">Client</th>
+                <th className="px-4 py-3 whitespace-nowrap">Brand</th>
+                <th className="px-4 py-3 whitespace-nowrap">Category</th>
+                <th className="px-4 py-3 whitespace-nowrap">Product</th>
+                <th className="px-4 py-3 whitespace-nowrap">Model No.</th>
+                <th className="px-4 py-3 whitespace-nowrap">Description</th>
+                <th className="px-4 py-3 whitespace-nowrap">Mfg. Dates</th>
+                <th className="px-4 py-3 whitespace-nowrap">Serial Limits</th>
+                <th className="px-4 py-3 whitespace-nowrap">Warranty</th>
+                <th className="px-4 py-3 whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 whitespace-nowrap text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e2c42]">

@@ -618,18 +618,18 @@ export default function UserManagementView({ initialMode = 'createUser', current
         {loading ? (
           <div className="text-center py-8 text-xs text-slate-400">Loading users...</div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-[#334155]">
-            <table className="w-full text-left text-xs text-slate-300">
+          <div className="overflow-x-auto custom-horizontal-scrollbar rounded-lg border border-[#334155]">
+            <table className="w-full text-left text-xs text-slate-300 min-w-[1100px]">
               <thead className="bg-[#172033] text-slate-400 uppercase text-[10px] tracking-wider border-b border-[#334155]">
                 <tr>
-                  <th className="px-4 py-3">Username</th>
-                  <th className="px-4 py-3">Full Name</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Assigned Zone</th>
-                  <th className="px-4 py-3">Assigned Branch</th>
-                  <th className="px-4 py-3">Contact</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Username</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Full Name</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Role</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Assigned Zone</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Assigned Branch</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Contact</th>
+                  <th className="px-4 py-3 whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3 whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#334155]/60">

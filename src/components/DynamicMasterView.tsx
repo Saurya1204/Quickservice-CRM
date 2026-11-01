@@ -285,21 +285,21 @@ export default function DynamicMasterView({
         )}
 
         {/* Data Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto custom-horizontal-scrollbar">
           {loading ? (
             <div className="p-8 text-center text-slate-400">Loading {title}...</div>
           ) : (
-            <table className="w-full text-left text-sm text-slate-300">
+            <table className="w-full text-left text-sm text-slate-300 min-w-[1050px]">
               <thead className="bg-[#172033] text-xs uppercase text-slate-400 border-b border-[#334155]">
                 <tr>
-                  <th className="p-3">CRM Code</th>
-                  <th className="p-3">{nameLabel}</th>
-                  <th className="p-3">{categoryLabel}</th>
-                  <th className="p-3">{subTextLabel}</th>
-                  <th className="p-3">{field1Label}</th>
-                  <th className="p-3">{field2Label}</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3 text-right">Actions</th>
+                  <th className="p-3 whitespace-nowrap">CRM Code</th>
+                  <th className="p-3 whitespace-nowrap">{nameLabel}</th>
+                  <th className="p-3 whitespace-nowrap">{categoryLabel}</th>
+                  <th className="p-3 whitespace-nowrap">{subTextLabel}</th>
+                  <th className="p-3 whitespace-nowrap">{field1Label}</th>
+                  <th className="p-3 whitespace-nowrap">{field2Label}</th>
+                  <th className="p-3 whitespace-nowrap">Status</th>
+                  <th className="p-3 whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#334155]">

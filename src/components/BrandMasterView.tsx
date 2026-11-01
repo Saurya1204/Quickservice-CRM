@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { getCachedData, fetchWithCache, invalidateCache } from '@/lib/clientCache';
 
 export default function BrandMasterView() {
-  const [brands, setBrands] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [brands, setBrands] = useState<any[]>(() => getCachedData('/api/masters/brands')?.data || []);
+  const [clients, setClients] = useState<any[]>(() => (getCachedData('/api/masters/clients')?.data || []).filter((c: any) => c.status === 'A'));
+  const [loading, setLoading] = useState<boolean>(() => !getCachedData('/api/masters/brands'));
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingBrand, setEditingBrand] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
@@ -32,12 +33,18 @@ export default function BrandMasterView() {
     fetchClients();
   }, []);
 
-  const fetchBrands = async () => {
-    setLoading(true);
+  const fetchBrands = async (forceRefresh = false) => {
+    const cached = getCachedData('/api/masters/brands');
+    if (!cached || forceRefresh) {
+      if (!cached) setLoading(true);
+    } else {
+      setBrands(cached.data || []);
+      setLoading(false);
+    }
+
     try {
-      const res = await fetch('/api/masters/brands');
-      const json = await res.json();
-      if (json.success) {
+      const json = await fetchWithCache('/api/masters/brands', { forceRefresh });
+      if (json && json.success) {
         setBrands(json.data || []);
       }
     } catch (e) {
@@ -49,9 +56,8 @@ export default function BrandMasterView() {
 
   const fetchClients = async () => {
     try {
-      const res = await fetch('/api/masters/clients');
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
+      const json = await fetchWithCache('/api/masters/clients');
+      if (json && json.success && Array.isArray(json.data)) {
         const activeClients = json.data.filter((c: any) => c.status === 'A');
         setClients(activeClients);
         if (activeClients.length > 0 && !formData.clientId) {
@@ -93,7 +99,8 @@ export default function BrandMasterView() {
       const json = await res.json();
       if (json.success) {
         alert(json.message);
-        fetchBrands();
+        invalidateCache('/api/masters/brands');
+        fetchBrands(true);
       } else {
         alert(json.message);
       }
@@ -135,7 +142,8 @@ export default function BrandMasterView() {
           alert('Brand updated successfully!');
           setShowAddForm(false);
           setEditingBrand(null);
-          fetchBrands();
+          invalidateCache('/api/masters/brands');
+          fetchBrands(true);
         } else {
           alert(json.message);
         }
@@ -149,7 +157,8 @@ export default function BrandMasterView() {
         if (json.success) {
           alert(json.message || 'Brand created successfully!');
           setShowAddForm(false);
-          fetchBrands();
+          invalidateCache('/api/masters/brands');
+          fetchBrands(true);
         } else {
           alert(json.message);
         }
@@ -243,17 +252,17 @@ export default function BrandMasterView() {
 
           {/* Table */}
           <div className="bg-[#111c2e] rounded-xl border border-[#24344d] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto custom-horizontal-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[950px]">
                 <thead>
                   <tr className="bg-[#0d1624] border-b border-[#24344d] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    <th className="py-3 px-4">Brand ID</th>
-                    <th className="py-3 px-4">Brand Logo</th>
-                    <th className="py-3 px-4">Brand Name</th>
-                    <th className="py-3 px-4">Client Name</th>
-                    <th className="py-3 px-4">Created Date</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Brand ID</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Brand Logo</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Brand Name</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Client Name</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Created Date</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Status</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#24344d]/60 text-xs">

@@ -125,7 +125,7 @@ function LanguageDualList({ available, selected, onChange }: LanguageDualListPro
   );
 }
 
-export default function FreelanceMasterView() {
+export default function FreelanceMasterView({ currentUser }: { currentUser?: any } = {}) {
   const [freelancers, setFreelancers] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -419,18 +419,18 @@ export default function FreelanceMasterView() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => handleOpenDocModal()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-semibold rounded-lg shadow-lg shadow-red-900/30 transition active:scale-95"
-          >
-            <span>📁</span>
-            <span>Upload Document</span>
-          </button>
-          <button
             onClick={handleOpenAdd}
             className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-blue-900/30 transition active:scale-95"
           >
             <span>+</span>
             <span>ADD</span>
+          </button>
+          <button
+            onClick={() => handleOpenDocModal()}
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-semibold rounded-lg shadow-lg shadow-red-900/30 transition active:scale-95"
+          >
+            <span>📁</span>
+            <span>Upload Document</span>
           </button>
         </div>
       </div>
@@ -491,20 +491,26 @@ export default function FreelanceMasterView() {
 
           {/* Table */}
           <div className="bg-[#111c2e] rounded-xl border border-[#24344d] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="flex items-center justify-between text-[11px] text-slate-400 px-4 py-2.5 bg-[#0d1624]/80 border-b border-[#24344d]">
+              <span className="flex items-center gap-1.5 text-blue-400 font-medium">
+                <span>↔</span> Scroll sideways to view all columns (Contact, Branch, Location, Status, Actions)
+              </span>
+              <span className="text-slate-400 font-mono text-[10px]">Total Freelancers: {filteredFreelancers.length}</span>
+            </div>
+            <div className="overflow-x-auto custom-horizontal-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[1300px]">
                 <thead>
                   <tr className="bg-[#0d1624] border-b border-[#24344d] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    <th className="py-3 px-4">Freelancer ID</th>
-                    <th className="py-3 px-4">Freelancer Name</th>
-                    <th className="py-3 px-4">Contact Number</th>
-                    <th className="py-3 px-4">Email ID</th>
-                    <th className="py-3 px-4">Branch</th>
-                    <th className="py-3 px-4">Region</th>
-                    <th className="py-3 px-4">Location</th>
-                    <th className="py-3 px-4">Joining Date</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Freelancer ID</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Freelancer Name</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Contact Number</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Email ID</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Branch</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Region</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Location</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Joining Date</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Status</th>
+                    <th className="py-3 px-4 whitespace-nowrap text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#24344d]/60 text-xs">
@@ -523,22 +529,22 @@ export default function FreelanceMasterView() {
                   ) : (
                     filteredFreelancers.map((f) => (
                       <tr key={f._id} className="hover:bg-[#16233b]/50 transition">
-                        <td className="py-3 px-4 font-mono font-bold text-emerald-400">
+                        <td className="py-3 px-4 font-mono font-bold text-emerald-400 whitespace-nowrap">
                           {f.freelancerCode}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <div className="font-semibold text-white">{f.freelancerName}</div>
                           <div className="text-[11px] text-slate-400">{f.skillSet || 'General Repair'}</div>
                         </td>
-                        <td className="py-3 px-4 text-slate-300 font-mono">{f.contactNumber}</td>
-                        <td className="py-3 px-4 text-slate-300">{f.emailId || '-'}</td>
-                        <td className="py-3 px-4 text-slate-300">{f.branchName || '-'}</td>
-                        <td className="py-3 px-4 text-slate-300">{f.region}</td>
-                        <td className="py-3 px-4 text-slate-300">
+                        <td className="py-3 px-4 text-slate-300 font-mono whitespace-nowrap">{f.contactNumber}</td>
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap">{f.emailId || '-'}</td>
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap">{f.branchName || '-'}</td>
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap">{f.region}</td>
+                        <td className="py-3 px-4 text-slate-300 whitespace-nowrap">
                           {f.city ? `${f.city}, ${f.state}` : '-'}
                         </td>
-                        <td className="py-3 px-4 text-slate-400">{f.dateOfJoining || '-'}</td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 text-slate-400 whitespace-nowrap">{f.dateOfJoining || '-'}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                               f.status === 'A'
@@ -549,7 +555,7 @@ export default function FreelanceMasterView() {
                             {f.status === 'A' ? 'ACTIVE' : 'INACTIVE'}
                           </span>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleOpenDocModal(f)}

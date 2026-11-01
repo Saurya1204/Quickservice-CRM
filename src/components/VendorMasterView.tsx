@@ -430,21 +430,21 @@ export default function VendorMasterView() {
 
       {/* Vendor Records Table */}
       <div className="bg-[#111c2e] rounded-xl border border-[#24344d] overflow-hidden shadow-lg">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+        <div className="overflow-x-auto custom-horizontal-scrollbar">
+          <table className="w-full text-left text-xs text-slate-300 min-w-[1300px]">
             <thead className="bg-[#0d1624] text-[11px] uppercase tracking-wider text-slate-400 font-semibold border-b border-[#24344d]">
               <tr>
-                <th className="px-4 py-3">Vendor Name</th>
-                <th className="px-4 py-3">Vendor As</th>
-                <th className="px-4 py-3">Address</th>
-                <th className="px-4 py-3">City / Dist</th>
-                <th className="px-4 py-3">State</th>
-                <th className="px-4 py-3">Pincode</th>
-                <th className="px-4 py-3 font-mono">GST / PAN</th>
-                <th className="px-4 py-3">Proprietor</th>
-                <th className="px-4 py-3">Contact</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className="px-4 py-3 whitespace-nowrap">Vendor Name</th>
+                <th className="px-4 py-3 whitespace-nowrap">Vendor As</th>
+                <th className="px-4 py-3 whitespace-nowrap">Address</th>
+                <th className="px-4 py-3 whitespace-nowrap">City / Dist</th>
+                <th className="px-4 py-3 whitespace-nowrap">State</th>
+                <th className="px-4 py-3 whitespace-nowrap">Pincode</th>
+                <th className="px-4 py-3 font-mono whitespace-nowrap">GST / PAN</th>
+                <th className="px-4 py-3 whitespace-nowrap">Proprietor</th>
+                <th className="px-4 py-3 whitespace-nowrap">Contact</th>
+                <th className="px-4 py-3 whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e2c42]">

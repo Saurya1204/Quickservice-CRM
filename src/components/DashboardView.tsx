@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { fetchWithCache, invalidateCache, getCachedData } from '@/lib/clientCache';
 
 interface DashboardViewProps {
   currentUser?: any;
@@ -51,7 +52,6 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
   }, [currentUser]);
 
   const fetchDashboard = async () => {
-    setLoading(true);
     try {
       const params = new URLSearchParams();
       if (roleCode) params.set('role', roleCode);
@@ -59,18 +59,15 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
       if (assignedBranch) params.set('branch', assignedBranch);
       if (assignedArea) params.set('city', assignedArea);
 
-      const [statsRes, callsRes] = await Promise.all([
-        fetch(`/api/dashboard/stats?${params.toString()}`),
-        fetch(`/api/calls?${params.toString()}`),
+      const [statsJson, callsJson] = await Promise.all([
+        fetchWithCache(`/api/dashboard/stats?${params.toString()}`).catch(() => null),
+        fetchWithCache(`/api/calls?${params.toString()}`).catch(() => null),
       ]);
 
-      const statsJson = await statsRes.json();
-      const callsJson = await callsRes.json();
-
-      if (statsJson.success) {
+      if (statsJson && statsJson.success) {
         setStats(statsJson.stats);
       }
-      if (callsJson.success) {
+      if (callsJson && callsJson.success) {
         setRecentCalls(callsJson.data);
       }
     } catch (e) {
@@ -102,6 +99,8 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
       const json = await res.json();
       if (json.success) {
         setEditingCall(null);
+        invalidateCache('/api/calls');
+        invalidateCache('/api/dashboard/stats');
         fetchDashboard();
       } else {
         alert(json.message);

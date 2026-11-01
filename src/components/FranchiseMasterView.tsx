@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import PincodeField from '@/components/common/PincodeLookup';
-const FRANCHISE_DOCUMENT_TYPES = [
+import { getCachedData, fetchWithCache, invalidateCache } from '@/lib/clientCache';
+
+export const DEFAULT_FRANCHISE_DOCUMENT_TYPES = [
   'Firm Address Proof',
   'GST Certificate',
   'PAN Card',
@@ -13,7 +15,47 @@ const FRANCHISE_DOCUMENT_TYPES = [
   'Aadhar Card',
   'Cancel Cheque',
   'Rent Agreement',
-] as const;
+];
+
+export const DEFAULT_FRANCHISE_FIRM_TYPES = [
+  'Proprietor',
+  'Partnership',
+  'Private Limited',
+  'LLP',
+  'Public Limited',
+  'Trust / Society',
+];
+
+export const DEFAULT_FRANCHISE_REGIONS = [
+  'North',
+  'South',
+  'East',
+  'West',
+  'Central',
+];
+
+export const DEFAULT_FRANCHISE_SPACE_OWNERSHIP = [
+  'Owned',
+  'Rented',
+  'Leased',
+  'Mortgaged',
+];
+
+export const DEFAULT_FRANCHISE_INTERNET_CONNECTIVITY = [
+  'Broadband',
+  'Fiber',
+  'Mobile Data',
+  'Leased Line',
+  'None',
+];
+
+export const DEFAULT_FRANCHISE_VALIDITY = [
+  '11 Months',
+  '1 Year',
+  '2 Years',
+  '3 Years',
+  '5 Years',
+];
 
 const ALL_LANGUAGES = [
   'Hindi',
@@ -41,12 +83,33 @@ interface FranchiseMasterViewProps {
 }
 
 export default function FranchiseMasterView({ currentUser }: FranchiseMasterViewProps) {
-  const [franchises, setFranchises] = useState<any[]>([]);
-  const [branches, setBranches] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const isSuperAdmin =
+    currentUser?.role === 'Super Admin' ||
+    currentUser?.roleCode === 'SUPER_ADMIN' ||
+    !currentUser;
+
+  // Initialize from cache for instant 0ms mount if previously fetched
+  const [franchises, setFranchises] = useState<any[]>(() => getCachedData('/api/masters/franchises')?.data || []);
+  const [branches, setBranches] = useState<any[]>(() => getCachedData('/api/masters/branches')?.data || []);
+  const [loading, setLoading] = useState<boolean>(() => !getCachedData('/api/masters/franchises'));
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingFranchise, setEditingFranchise] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Dynamic Dropdown Master Options (Super Admin configurable)
+  const [firmTypeOptions, setFirmTypeOptions] = useState<string[]>(DEFAULT_FRANCHISE_FIRM_TYPES);
+  const [regionOptions, setRegionOptions] = useState<string[]>(DEFAULT_FRANCHISE_REGIONS);
+  const [spaceOwnershipOptions, setSpaceOwnershipOptions] = useState<string[]>(DEFAULT_FRANCHISE_SPACE_OWNERSHIP);
+  const [internetOptions, setInternetOptions] = useState<string[]>(DEFAULT_FRANCHISE_INTERNET_CONNECTIVITY);
+  const [documentTypeOptions, setDocumentTypeOptions] = useState<string[]>(DEFAULT_FRANCHISE_DOCUMENT_TYPES);
+  const [validityOptions, setValidityOptions] = useState<string[]>(DEFAULT_FRANCHISE_VALIDITY);
+
+  // Master Dropdown Configuration Modal State
+  const [showMasterConfigModal, setShowMasterConfigModal] = useState(false);
+  const [activeConfigCategory, setActiveConfigCategory] = useState<
+    'firmType' | 'region' | 'spaceOwnership' | 'internetConnectivity' | 'documentType' | 'validity'
+  >('firmType');
+  const [newOptionInput, setNewOptionInput] = useState('');
 
   // Filters & Pagination
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,7 +123,7 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
   const [docModalTab, setDocModalTab] = useState<'upload' | 'repository'>('upload');
   const [docFranchiseCRMCode, setDocFranchiseCRMCode] = useState('');
   const [docFranchiseId, setDocFranchiseId] = useState('');
-  const [docType, setDocType] = useState<string>(FRANCHISE_DOCUMENT_TYPES[0]);
+  const [docType, setDocType] = useState<string>(DEFAULT_FRANCHISE_DOCUMENT_TYPES[0]);
   const [docFile, setDocFile] = useState<File | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -156,13 +219,104 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
   useEffect(() => {
     fetchFranchises();
     fetchBranches();
+    fetchDynamicDropdownMasters();
   }, [filterRegion, filterStatus]);
+
+  // Dynamic Master Dropdown fetching (from DB with fallback defaults)
+  const fetchDynamicDropdownMasters = async () => {
+    try {
+      const res = await fetchWithCache('/api/masters/dynamic?type=franchise_*', { maxAgeMs: 60 * 1000 });
+      if (res && res.success && Array.isArray(res.data)) {
+        const firms = res.data.filter((d: any) => d.entityType === 'franchise_firmType').map((d: any) => d.name);
+        if (firms.length) setFirmTypeOptions(Array.from(new Set([...DEFAULT_FRANCHISE_FIRM_TYPES, ...firms])));
+
+        const regs = res.data.filter((d: any) => d.entityType === 'franchise_region').map((d: any) => d.name);
+        if (regs.length) setRegionOptions(Array.from(new Set([...DEFAULT_FRANCHISE_REGIONS, ...regs])));
+
+        const space = res.data.filter((d: any) => d.entityType === 'franchise_spaceOwnership').map((d: any) => d.name);
+        if (space.length) setSpaceOwnershipOptions(Array.from(new Set([...DEFAULT_FRANCHISE_SPACE_OWNERSHIP, ...space])));
+
+        const net = res.data.filter((d: any) => d.entityType === 'franchise_internetConnectivity').map((d: any) => d.name);
+        if (net.length) setInternetOptions(Array.from(new Set([...DEFAULT_FRANCHISE_INTERNET_CONNECTIVITY, ...net])));
+
+        const docs = res.data.filter((d: any) => d.entityType === 'franchise_documentType').map((d: any) => d.name);
+        if (docs.length) setDocumentTypeOptions(Array.from(new Set([...DEFAULT_FRANCHISE_DOCUMENT_TYPES, ...docs])));
+
+        const val = res.data.filter((d: any) => d.entityType === 'franchise_validity').map((d: any) => d.name);
+        if (val.length) setValidityOptions(Array.from(new Set([...DEFAULT_FRANCHISE_VALIDITY, ...val])));
+      }
+    } catch (e) {
+      console.error('Error fetching dynamic franchise dropdowns:', e);
+    }
+  };
+
+  const handleAddMasterOption = async () => {
+    if (!newOptionInput.trim()) return;
+    const val = newOptionInput.trim();
+
+    if (activeConfigCategory === 'firmType') {
+      setFirmTypeOptions((prev) => Array.from(new Set([...prev, val])));
+    } else if (activeConfigCategory === 'region') {
+      setRegionOptions((prev) => Array.from(new Set([...prev, val])));
+    } else if (activeConfigCategory === 'spaceOwnership') {
+      setSpaceOwnershipOptions((prev) => Array.from(new Set([...prev, val])));
+    } else if (activeConfigCategory === 'internetConnectivity') {
+      setInternetOptions((prev) => Array.from(new Set([...prev, val])));
+    } else if (activeConfigCategory === 'documentType') {
+      setDocumentTypeOptions((prev) => Array.from(new Set([...prev, val])));
+    } else if (activeConfigCategory === 'validity') {
+      setValidityOptions((prev) => Array.from(new Set([...prev, val])));
+    }
+
+    setNewOptionInput('');
+
+    try {
+      await fetch('/api/masters/dynamic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entityType: `franchise_${activeConfigCategory}`,
+          name: val,
+          status: 'Active',
+        }),
+      });
+      invalidateCache('/api/masters/dynamic?type=franchise_*');
+    } catch (e) {
+      console.error('Failed to persist dynamic option:', e);
+    }
+  };
+
+  const handleDeleteMasterOption = async (category: string, option: string) => {
+    if (!confirm(`Are you sure you want to delete "${option}" from ${category}?`)) return;
+
+    if (category === 'firmType') {
+      setFirmTypeOptions((prev) => prev.filter((o) => o !== option));
+    } else if (category === 'region') {
+      setRegionOptions((prev) => prev.filter((o) => o !== option));
+    } else if (category === 'spaceOwnership') {
+      setSpaceOwnershipOptions((prev) => prev.filter((o) => o !== option));
+    } else if (category === 'internetConnectivity') {
+      setInternetOptions((prev) => prev.filter((o) => o !== option));
+    } else if (category === 'documentType') {
+      setDocumentTypeOptions((prev) => prev.filter((o) => o !== option));
+    } else if (category === 'validity') {
+      setValidityOptions((prev) => prev.filter((o) => o !== option));
+    }
+
+    try {
+      await fetch(`/api/masters/dynamic?type=franchise_${category}&name=${encodeURIComponent(option)}`, {
+        method: 'DELETE',
+      });
+      invalidateCache('/api/masters/dynamic?type=franchise_*');
+    } catch (e) {
+      console.error('Failed to delete dynamic option:', e);
+    }
+  };
 
   const fetchBranches = async () => {
     try {
-      const res = await fetch('/api/masters/branches');
-      const json = await res.json();
-      if (json.success) {
+      const json = await fetchWithCache('/api/masters/branches');
+      if (json && json.success) {
         setBranches(json.data || []);
       }
     } catch (e) {
@@ -170,17 +324,24 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
     }
   };
 
-  const fetchFranchises = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (filterRegion !== 'ALL') params.set('region', filterRegion);
-      if (filterStatus !== 'ALL') params.set('status', filterStatus);
-      if (searchTerm) params.set('search', searchTerm);
+  const fetchFranchises = async (forceRefresh = false) => {
+    const params = new URLSearchParams();
+    if (filterRegion !== 'ALL') params.set('region', filterRegion);
+    if (filterStatus !== 'ALL') params.set('status', filterStatus);
+    if (searchTerm) params.set('search', searchTerm);
 
-      const res = await fetch(`/api/masters/franchises?${params.toString()}`);
-      const json = await res.json();
-      if (json.success) {
+    const url = `/api/masters/franchises?${params.toString()}`;
+    const cached = getCachedData(url);
+    if (!cached || forceRefresh) {
+      if (!cached) setLoading(true);
+    } else {
+      setFranchises(cached.data || []);
+      setLoading(false);
+    }
+
+    try {
+      const json = await fetchWithCache(url, { forceRefresh });
+      if (json && json.success) {
         setFranchises(json.data || []);
       }
     } catch (e) {
@@ -236,7 +397,8 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
           alert('Franchise updated successfully!');
           setShowAddForm(false);
           setEditingFranchise(null);
-          fetchFranchises();
+          invalidateCache('/api/masters/franchises');
+          fetchFranchises(true);
         } else {
           alert(json.message);
         }
@@ -254,7 +416,8 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
           alert(json.message || 'Franchise created successfully!');
           setShowAddForm(false);
           handleResetForm();
-          fetchFranchises();
+          invalidateCache('/api/masters/franchises');
+          fetchFranchises(true);
         } else {
           alert(json.message);
         }
@@ -375,7 +538,7 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
       setDocFranchiseId('');
       setDocFranchiseCRMCode('');
     }
-    setDocType(FRANCHISE_DOCUMENT_TYPES[0]);
+    setDocType(documentTypeOptions[0] || DEFAULT_FRANCHISE_DOCUMENT_TYPES[0]);
     setDocFile(null);
     setUploadMessage(null);
     setShowDocModal(true);
@@ -518,6 +681,17 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
 
           {/* Action Buttons matching User Screenshot */}
           <div className="flex flex-wrap items-center gap-2.5">
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => setShowMasterConfigModal(true)}
+                className="bg-[#111c2e] hover:bg-[#1a2942] border border-[#334155] text-slate-200 text-xs sm:text-sm px-3.5 py-2 rounded-md font-medium transition shadow-md whitespace-nowrap cursor-pointer flex items-center gap-1.5"
+                title="Manage Dropdown Masters (Firm Type, Region, Space Ownership, etc.)"
+              >
+                <span>⚙️</span>
+                <span>Dropdown Masters</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 if (showAddForm) {
@@ -564,11 +738,11 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
                     onChange={(e) => setFormData({ ...formData, region: e.target.value })}
                     className="w-full bg-[#111c2e] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="North">North</option>
-                    <option value="South">South</option>
-                    <option value="East">East</option>
-                    <option value="West">West</option>
-                    <option value="Central">Central</option>
+                    {regionOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -578,8 +752,11 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
                     onChange={(e) => setFormData({ ...formData, firmType: e.target.value })}
                     className="w-full bg-[#111c2e] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="Proprietor">Proprietor</option>
-                    <option value="Partnership">Partnership</option>
+                    {firmTypeOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -958,9 +1135,11 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
                     onChange={(e) => setFormData({ ...formData, spaceOwnership: e.target.value })}
                     className="w-full bg-[#111c2e] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="Owned">Owned</option>
-                    <option value="Rented">Rented</option>
-                    <option value="Leased">Leased</option>
+                    {spaceOwnershipOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -984,13 +1163,17 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">Validity</label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.validity}
                     onChange={(e) => setFormData({ ...formData, validity: e.target.value })}
-                    placeholder="e.g. 11 Months / 3 Years"
                     className="w-full bg-[#111c2e] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
+                  >
+                    {validityOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1024,10 +1207,11 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
                     onChange={(e) => setFormData({ ...formData, internetConnectivity: e.target.value })}
                     className="w-full bg-[#111c2e] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="Broadband">Broadband</option>
-                    <option value="Fiber">Fiber</option>
-                    <option value="Mobile Data">Mobile Data</option>
-                    <option value="None">None</option>
+                    {internetOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -1384,20 +1568,20 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
                 <p className="text-[11px] text-slate-500 mt-0.5">Click + ADD to register a new franchise center.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-[#334155]">
-                <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto custom-horizontal-scrollbar rounded-xl border border-[#334155]">
+                <table className="w-full text-left text-xs min-w-[1300px]">
                   <thead className="bg-[#172033] text-slate-400 uppercase font-mono text-[10px] tracking-wider border-b border-[#334155]">
                     <tr>
-                      <th className="p-3">CRM Code</th>
-                      <th className="p-3">Franchise Name</th>
-                      <th className="p-3">Firm Type</th>
-                      <th className="p-3">Region</th>
-                      <th className="p-3">State / District</th>
-                      <th className="p-3">City</th>
-                      <th className="p-3">Contact Number</th>
-                      <th className="p-3">Email ID</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 text-right">Actions</th>
+                      <th className="p-3 whitespace-nowrap">CRM Code</th>
+                      <th className="p-3 whitespace-nowrap">Franchise Name</th>
+                      <th className="p-3 whitespace-nowrap">Firm Type</th>
+                      <th className="p-3 whitespace-nowrap">Region</th>
+                      <th className="p-3 whitespace-nowrap">State / District</th>
+                      <th className="p-3 whitespace-nowrap">City</th>
+                      <th className="p-3 whitespace-nowrap">Contact Number</th>
+                      <th className="p-3 whitespace-nowrap">Email ID</th>
+                      <th className="p-3 whitespace-nowrap">Status</th>
+                      <th className="p-3 whitespace-nowrap text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#334155]/50 text-slate-200">
@@ -1636,7 +1820,7 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
                       onChange={(e) => setDocType(e.target.value)}
                       className="w-full bg-[#0a111e] border border-[#2d3d54] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500"
                     >
-                      {FRANCHISE_DOCUMENT_TYPES.map((dt) => (
+                      {documentTypeOptions.map((dt) => (
                         <option key={dt} value={dt}>
                           {dt}
                         </option>
@@ -1811,6 +1995,138 @@ export default function FranchiseMasterView({ currentUser }: FranchiseMasterView
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* 4. SUPER ADMIN MASTER DROPDOWN CONFIGURATION MODAL             */}
+      {/* ============================================================== */}
+      {showMasterConfigModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#111c2e] border border-[#24344d] rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[#24344d] pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>⚙️</span>
+                  <span>Manage Franchise Dropdown Masters</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Super Admin control to add, edit, or remove dropdown choices dynamically
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMasterConfigModal(false)}
+                className="text-slate-400 hover:text-white text-sm cursor-pointer p-1 rounded hover:bg-slate-800/50"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Category Selector Tabs */}
+            <div className="flex flex-wrap gap-1.5 border-b border-[#24344d] pb-3 text-xs">
+              {[
+                { id: 'firmType', label: 'Firm Type' },
+                { id: 'region', label: 'Region' },
+                { id: 'spaceOwnership', label: 'Space Ownership' },
+                { id: 'internetConnectivity', label: 'Internet Connectivity' },
+                { id: 'documentType', label: 'Document Type' },
+                { id: 'validity', label: 'Agreement Validity' },
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setActiveConfigCategory(cat.id as any)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    activeConfigCategory === cat.id
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-[#0d1624] text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Option Creation Input */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder={`Type new option to add to ${
+                  activeConfigCategory === 'firmType'
+                    ? 'Firm Type'
+                    : activeConfigCategory === 'region'
+                    ? 'Region'
+                    : activeConfigCategory === 'spaceOwnership'
+                    ? 'Space Ownership'
+                    : activeConfigCategory === 'internetConnectivity'
+                    ? 'Internet Connectivity'
+                    : activeConfigCategory === 'documentType'
+                    ? 'Document Type'
+                    : 'Agreement Validity'
+                }...`}
+                value={newOptionInput}
+                onChange={(e) => setNewOptionInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddMasterOption();
+                  }
+                }}
+                className="flex-1 bg-[#0d1624] border border-[#24344d] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddMasterOption}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow cursor-pointer whitespace-nowrap"
+              >
+                + Add Option
+              </button>
+            </div>
+
+            {/* List of current options */}
+            <div className="bg-[#0d1624] border border-[#24344d] rounded-xl p-3 max-h-60 overflow-y-auto custom-horizontal-scrollbar space-y-1.5">
+              {(activeConfigCategory === 'firmType'
+                ? firmTypeOptions
+                : activeConfigCategory === 'region'
+                ? regionOptions
+                : activeConfigCategory === 'spaceOwnership'
+                ? spaceOwnershipOptions
+                : activeConfigCategory === 'internetConnectivity'
+                ? internetOptions
+                : activeConfigCategory === 'documentType'
+                ? documentTypeOptions
+                : validityOptions
+              ).map((opt) => (
+                <div
+                  key={opt}
+                  className="flex items-center justify-between p-2 rounded-lg bg-[#111c2e] hover:bg-[#16233b] text-xs text-slate-200 border border-[#24344d]/60 transition"
+                >
+                  <span className="font-medium">{opt}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteMasterOption(activeConfigCategory, opt)}
+                    className="text-rose-400 hover:text-rose-300 text-xs px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 transition cursor-pointer font-medium"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center pt-2 border-t border-[#24344d]">
+              <span className="text-[11px] text-slate-500">
+                Options saved dynamically and persist across sessions.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowMasterConfigModal(false)}
+                className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition cursor-pointer"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>
