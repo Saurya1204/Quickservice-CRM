@@ -1260,13 +1260,32 @@ export default function CallRegistrationModule({
                 <PincodeField
                   pincode={formData.pincode}
                   onPincodeChange={(pin) => setFormData((prev) => ({ ...prev, pincode: pin }))}
-                  onLocationFound={(loc) => {
+                  onLocationFound={async (loc) => {
                     setFormData((prev) => ({
                       ...prev,
                       state: loc.state,
                       district: loc.district || loc.city,
                       city: loc.city,
                     }));
+
+                    // Map franchise territory routing if mapped to this pincode
+                    try {
+                      const cleanPin = (formData.pincode || '').trim();
+                      if (cleanPin.length === 6) {
+                        const mapRes = await fetch(`/api/masters/mappings/franchise-pincodes?pincode=${cleanPin}`);
+                        const mapJson = await mapRes.json();
+                        if (mapJson.success && Array.isArray(mapJson.data) && mapJson.data.length > 0) {
+                          const mappedF = mapJson.data[0];
+                          setFormData((prev) => ({
+                            ...prev,
+                            serviceProviderType: 'Franchise',
+                            serviceProviderName: mappedF.franchiseName,
+                          }));
+                        }
+                      }
+                    } catch (mapErr) {
+                      console.warn('Franchise pincode lookup error:', mapErr);
+                    }
                   }}
                 />
               </div>

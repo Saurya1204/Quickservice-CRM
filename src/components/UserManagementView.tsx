@@ -334,14 +334,23 @@ export default function UserManagementView({ initialMode = 'createUser', current
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Reports To</label>
-                <input
-                  type="text"
-                  placeholder="e.g. ZSM North / Super Admin"
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Reports To (Manager)
+                </label>
+                <select
                   value={formData.reportingTo}
                   onChange={(e) => setFormData({ ...formData, reportingTo: e.target.value })}
                   className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
+                >
+                  <option value="">None (Top Level / Super Admin)</option>
+                  {users
+                    .filter((u) => !formData.username || u.username !== formData.username)
+                    .map((u) => (
+                      <option key={u._id} value={u.fullName}>
+                        {u.fullName} ({u.role})
+                      </option>
+                    ))}
+                </select>
               </div>
 
               <div>

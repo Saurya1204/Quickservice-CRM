@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { SYSTEM_MODULES, SystemModuleConfig } from '@/lib/rbac';
 import MasterDocumentModal, { UploadDocumentButton } from '@/components/common/MasterDocumentModal';
+import ReportingHierarchyModal from '@/components/ReportingHierarchyModal';
 
 export default function RoleMasterView({ currentUser }: { currentUser?: any }) {
   const [roles, setRoles] = useState<any[]>([]);
@@ -10,6 +11,7 @@ export default function RoleMasterView({ currentUser }: { currentUser?: any }) {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showHierarchyModal, setShowHierarchyModal] = useState(false);
   const [editingRole, setEditingRole] = useState<any | null>(null);
   const [selectedRoleForPerms, setSelectedRoleForPerms] = useState<any | null>(null);
   const [permissionsState, setPermissionsState] = useState<any[]>([]);
@@ -354,6 +356,12 @@ export default function RoleMasterView({ currentUser }: { currentUser?: any }) {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="bg-[#172033] border border-[#334155] text-xs px-3 py-2 rounded-lg text-white focus:outline-none focus:border-emerald-500 w-40"
             />
+            <button
+              onClick={() => setShowHierarchyModal(true)}
+              className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs sm:text-sm px-4 py-2 rounded-md font-medium transition shadow-md whitespace-nowrap cursor-pointer flex items-center space-x-1.5"
+            >
+              <span>🌐 Configure Reporting Hierarchy</span>
+            </button>
             <button
               onClick={handleOpenCreateRole}
               className="bg-[#2563eb] hover:bg-blue-700 active:bg-blue-800 text-white text-xs sm:text-sm px-4 py-2 rounded-md font-medium transition shadow-md whitespace-nowrap cursor-pointer"
@@ -753,6 +761,12 @@ export default function RoleMasterView({ currentUser }: { currentUser?: any }) {
         masterTitle="Role Master"
         entities={roles.map((r) => ({ id: r._id, name: r.name, code: r.code }))}
         currentUser={currentUser}
+      />
+      <ReportingHierarchyModal
+        isOpen={showHierarchyModal}
+        onClose={() => setShowHierarchyModal(false)}
+        currentUser={currentUser}
+        onHierarchyUpdated={fetchRoles}
       />
     </div>
   );

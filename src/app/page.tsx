@@ -21,6 +21,9 @@ import SymptomMasterView from '@/components/SymptomMasterView';
 import CauseMasterView from '@/components/CauseMasterView';
 import AnalysisMasterView from '@/components/AnalysisMasterView';
 import CategoryMappingView from '@/components/CategoryMappingView';
+import FranchiseBrandMappingView from '@/components/FranchiseBrandMappingView';
+import FranchiseCategoryMappingView from '@/components/FranchiseCategoryMappingView';
+import FranchisePincodeMappingView from '@/components/FranchisePincodeMappingView';
 import DownloadView from '@/components/DownloadView';
 import DynamicMasterView from '@/components/DynamicMasterView';
 import CallManagementView from '@/components/CallManagementView';
@@ -270,35 +273,17 @@ export default function Home() {
         {/* 3. Mapping Views */}
         {visitedSections.has('brandMapping') && (
           <div className={currentSection === 'brandMapping' ? 'block' : 'hidden'}>
-            <DynamicMasterView
-              type="brandMapping"
-              title="Brand Mapping"
-              subTitle="Map brands to ASC & branch service networks"
-              nameLabel="Brand Mapping Name"
-              categoryLabel="Client"
-              subTextLabel="Network Details"
-              field1Label="Client Code"
-              field2Label="ASC Coverage"
-            />
+            <FranchiseBrandMappingView currentUser={user} />
           </div>
         )}
         {visitedSections.has('categoryMapping') && (
           <div className={currentSection === 'categoryMapping' ? 'block' : 'hidden'}>
-            <CategoryMappingView />
+            <FranchiseCategoryMappingView currentUser={user} />
           </div>
         )}
         {visitedSections.has('pincodeMapping') && (
           <div className={currentSection === 'pincodeMapping' ? 'block' : 'hidden'}>
-            <DynamicMasterView
-              type="pincodeMapping"
-              title="Pincode Mapping"
-              subTitle="Territorial routing & dispatch pincode mapping"
-              nameLabel="Pincode / Territory"
-              categoryLabel="Territory Name"
-              subTextLabel="Branch / ASC Routing"
-              field1Label="SLA Target"
-              field2Label="Field Force Count"
-            />
+            <FranchisePincodeMappingView currentUser={user} />
           </div>
         )}
         {visitedSections.has('warehouseMapping') && (

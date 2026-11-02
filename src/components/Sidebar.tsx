@@ -302,13 +302,13 @@ export default function Sidebar({
               {openMenus.mapping && (
                 <div className="bg-[#0b1320] py-1 border-t border-[#1e293b]/50">
                   <button onClick={() => onSelectSection('brandMapping')} className={itemClass('brandMapping')}>
-                    Brand Mapping
+                    Franchise Brand Mapping
                   </button>
                   <button onClick={() => onSelectSection('categoryMapping')} className={itemClass('categoryMapping')}>
-                    Category Mapping
+                    Franchise Category Mapping
                   </button>
                   <button onClick={() => onSelectSection('pincodeMapping')} className={itemClass('pincodeMapping')}>
-                    Pincode Mapping
+                    Franchise Pincode Mapping
                   </button>
                   <button onClick={() => onSelectSection('warehouseMapping')} className={itemClass('warehouseMapping')}>
                     Warehouse Mapping

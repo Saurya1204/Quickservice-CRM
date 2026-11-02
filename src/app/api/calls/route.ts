@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/db';
 import { ServiceCall } from '@/models/ServiceCall';
 import { AuditLog } from '@/models/AuditLog';
 import { NomenclatureService } from '@/lib/nomenclatureService';
+import { generateNextCallNo } from '@/lib/callNumberService';
 
 export async function GET(req: Request) {
   try {
@@ -124,13 +125,22 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: 'No records provided' }, { status: 400 });
       }
 
-      const count = await ServiceCall.countDocuments();
-      const prepared = body.map((call: any, idx: number) => ({
-        ...call,
-        callNo: call.callNo || `QS-CALL-${1000 + count + idx + 1}`,
-        callStatus: call.callStatus || 'OPEN',
-        daysPending: call.daysPending || 0,
-      }));
+      const prepared: any[] = [];
+      for (let idx = 0; idx < body.length; idx++) {
+        const call = body[idx];
+        const generatedCallNo =
+          call.callNo ||
+          (await generateNextCallNo({
+            state: call.state,
+            pincode: call.pincode,
+          }));
+        prepared.push({
+          ...call,
+          callNo: generatedCallNo,
+          callStatus: call.callStatus || 'OPEN',
+          daysPending: call.daysPending || 0,
+        });
+      }
 
       const inserted = await ServiceCall.insertMany(prepared);
       return NextResponse.json({
@@ -182,17 +192,30 @@ export async function POST(req: Request) {
     body.categoryName = body.categoryName || 'N/A';
     body.reportedFault = body.reportedFault || body.complaintDescription || 'General Service';
 
-    // Concurrency-safe unique complaint number generation
+    // Atomic, state-wise, date-wise Call ID generation (YYMMDD + STATE_CODE + QS + SEQUENCE)
+    // Eliminates E11000 duplicate key error and follows older CRM nomenclature
     if (!body.callNo) {
-      try {
-        body.callNo = await NomenclatureService.getNextCode('Service Call');
-      } catch (nomErr) {
-        const count = await ServiceCall.countDocuments();
-        body.callNo = `QS-CALL-${1000 + count + 1}`;
-      }
+      body.callNo = await generateNextCallNo({
+        state: body.state,
+        pincode: body.pincode,
+      });
     }
 
-    const newCall = await ServiceCall.create(body);
+    let newCall;
+    try {
+      newCall = await ServiceCall.create(body);
+    } catch (err: any) {
+      // If a duplicate key collision occurs, safely retry with a new atomic sequence
+      if (err.code === 11000 || (err.message && err.message.includes('E11000'))) {
+        body.callNo = await generateNextCallNo({
+          state: body.state,
+          pincode: body.pincode,
+        });
+        newCall = await ServiceCall.create(body);
+      } else {
+        throw err;
+      }
+    }
 
     await AuditLog.create({
       action: 'CALL_CREATE',
@@ -266,6 +289,9 @@ export async function PUT(req: Request) {
         message: `Call #${existingCall.callNo} reopened successfully!`,
       });
     }
+
+    // Preserve Call ID integrity: Call ID must remain unchanged when editing an existing call
+    delete updateData.callNo;
 
     const updated = await ServiceCall.findByIdAndUpdate(id, updateData, { new: true });
     return NextResponse.json({
