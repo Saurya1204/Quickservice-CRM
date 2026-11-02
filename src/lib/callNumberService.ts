@@ -250,3 +250,4 @@ export async function generateNextCallNo(options: GenerateCallNoOptions = {}): P
   const fallbackSeq = Math.floor(100000 + Math.random() * 900000);
   return `${dateKey}${stateCode}QS${fallbackSeq}`;
 }
+

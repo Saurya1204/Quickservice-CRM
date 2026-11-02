@@ -37,7 +37,52 @@ export async function GET(req: Request) {
       ];
     }
 
-    const franchises = await Franchise.find(query).sort({ createdAt: -1 }).lean();
+    let franchises = await Franchise.find(query).sort({ createdAt: -1 }).lean();
+
+    // Auto-seed initial enterprise franchise centers if collection is empty
+    if (franchises.length === 0 && !search && region === 'ALL' && status === 'ALL' && !crmCode) {
+      const defaultFranchises = [
+        {
+          crmCode: 'QSF0001',
+          region: 'North',
+          firmType: 'Proprietor',
+          firmName: 'Apex Electronics & Services',
+          firmAddress: 'Sector 62, Commercial Hub, Noida',
+          pincode: '201309',
+          state: 'UTTAR PRADESH',
+          district: 'GAUTAM BUDDHA NAGAR',
+          city: 'NOIDA',
+          locality: 'SECTOR 62',
+          contactNumber: '9810987654',
+          emailId: 'apex.services@quickserves.com',
+          proprietorName: 'Ramesh Sharma',
+          smartphoneAvailability: 'Yes',
+        },
+        {
+          crmCode: 'QSF0002',
+          region: 'North',
+          firmType: 'Proprietor',
+          firmName: 'Universal Care Services',
+          firmAddress: 'Indirapuram Central Market, Ghaziabad',
+          pincode: '201014',
+          state: 'UTTAR PRADESH',
+          district: 'GHAZIABAD',
+          city: 'GHAZIABAD',
+          locality: 'INDIRAPURAM',
+          contactNumber: '9811223344',
+          emailId: 'universal.care@quickserves.com',
+          proprietorName: 'Amit Verma',
+          smartphoneAvailability: 'Yes',
+        },
+      ];
+      try {
+        await Franchise.insertMany(defaultFranchises);
+        franchises = await Franchise.find(query).sort({ createdAt: -1 }).lean();
+      } catch (seedErr) {
+        console.warn('Franchise auto-seed skipped:', seedErr);
+      }
+    }
+
     return NextResponse.json(
       { success: true, data: franchises, count: franchises.length },
       { headers: { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60' } }

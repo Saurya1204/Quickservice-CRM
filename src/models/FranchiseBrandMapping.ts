@@ -73,3 +73,4 @@ if (mongoose.models && mongoose.models.FranchiseBrandMapping) {
 export const FranchiseBrandMapping: Model<IFranchiseBrandMapping> =
   mongoose.models.FranchiseBrandMapping ||
   mongoose.model<IFranchiseBrandMapping>('FranchiseBrandMapping', FranchiseBrandMappingSchema);
+

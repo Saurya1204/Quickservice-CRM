@@ -42,14 +42,20 @@ export async function GET(req: Request) {
       });
     }
 
-    // Return all franchise category mappings summary
+    // Return all franchise category mappings summary and default available categories
     const allMappings = await FranchiseCategoryMapping.find({ isActive: true })
       .sort({ franchiseName: 1 })
       .lean();
 
     return NextResponse.json({
       success: true,
-      data: allMappings,
+      data: {
+        assignedCategories: [],
+        availableCategories: allCategories,
+        totalAssigned: 0,
+        totalAvailable: allCategories.length,
+        allMappings,
+      },
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
@@ -145,3 +151,4 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
+

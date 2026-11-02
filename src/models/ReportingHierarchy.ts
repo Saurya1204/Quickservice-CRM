@@ -107,3 +107,4 @@ if (mongoose.models && mongoose.models.ReportingHierarchy) {
 export const ReportingHierarchy: Model<IReportingHierarchy> =
   mongoose.models.ReportingHierarchy ||
   mongoose.model<IReportingHierarchy>('ReportingHierarchy', ReportingHierarchySchema);
+

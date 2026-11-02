@@ -12,9 +12,29 @@ export async function GET(req: Request) {
     const franchiseId = searchParams.get('franchiseId');
 
     // Fetch all active brands
-    const allBrands = await Brand.find({ status: { $ne: 'INACTIVE' } })
+    let allBrands = await Brand.find({ status: { $ne: 'INACTIVE' } })
       .sort({ brandName: 1 })
       .lean();
+
+    // Auto-seed older CRM reference brands if empty
+    if (allBrands.length === 0) {
+      const defaultBrands = [
+        { brandName: 'HIND POWER', brandCode: 'HIND01', status: 'ACTIVE' },
+        { brandName: 'Trumate', brandCode: 'TRUM01', status: 'ACTIVE' },
+        { brandName: 'BREVILLE', brandCode: 'BREV01', status: 'ACTIVE' },
+        { brandName: 'JYOMIX', brandCode: 'JYOM01', status: 'ACTIVE' },
+        { brandName: 'HUMINEX', brandCode: 'HUMI01', status: 'ACTIVE' },
+        { brandName: 'ZOOM', brandCode: 'ZOOM01', status: 'ACTIVE' },
+        { brandName: 'ALTINO', brandCode: 'ALTI01', status: 'ACTIVE' },
+        { brandName: 'MAPY', brandCode: 'MAPY01', status: 'ACTIVE' },
+      ];
+      try {
+        await Brand.insertMany(defaultBrands);
+        allBrands = await Brand.find({ status: { $ne: 'INACTIVE' } }).sort({ brandName: 1 }).lean();
+      } catch (seedErr) {
+        console.warn('Brand seed skipped:', seedErr);
+      }
+    }
 
     if (franchiseId) {
       const assigned = await FranchiseBrandMapping.find({
@@ -42,14 +62,20 @@ export async function GET(req: Request) {
       });
     }
 
-    // If no franchiseId, return summary list of all franchise mappings
+    // If no franchiseId selected, return allBrands as available, and all current mappings summary
     const allMappings = await FranchiseBrandMapping.find({ isActive: true })
       .sort({ franchiseName: 1 })
       .lean();
 
     return NextResponse.json({
       success: true,
-      data: allMappings,
+      data: {
+        assignedBrands: [],
+        availableBrands: allBrands,
+        totalAssigned: 0,
+        totalAvailable: allBrands.length,
+        allMappings,
+      },
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
@@ -145,3 +171,4 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
+

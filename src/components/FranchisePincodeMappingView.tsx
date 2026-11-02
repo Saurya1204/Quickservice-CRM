@@ -42,6 +42,7 @@ interface LocalityCheckResult {
 export default function FranchisePincodeMappingView({ currentUser }: { currentUser?: any }) {
   const [franchises, setFranchises] = useState<FranchiseItem[]>([]);
   const [selectedFranchiseId, setSelectedFranchiseId] = useState('');
+  const [crmCodeInput, setCrmCodeInput] = useState('');
 
   // Section A - Input
   const [pincodesInput, setPincodesInput] = useState('');
@@ -77,11 +78,18 @@ export default function FranchisePincodeMappingView({ currentUser }: { currentUs
 
   const loadFranchises = async () => {
     try {
-      const data = await fetchWithCache('/api/masters/franchises');
-      if (Array.isArray(data) && data.length > 0) {
-        setFranchises(data);
+      const res = await fetchWithCache('/api/masters/franchises');
+      const list: FranchiseItem[] =
+        res && res.success && Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res)
+          ? res
+          : [];
+      if (list.length > 0) {
+        setFranchises(list);
         if (!selectedFranchiseId) {
-          setSelectedFranchiseId(data[0]._id);
+          setSelectedFranchiseId(list[0]._id);
+          setCrmCodeInput(list[0].crmCode || '');
         }
       }
     } catch (e) {
@@ -482,6 +490,30 @@ export default function FranchisePincodeMappingView({ currentUser }: { currentUs
               <p className="text-xs text-slate-400">Target franchise partner to assign or update</p>
             </div>
 
+            {/* Franchise CRM Code (Editable with two-way sync) */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Franchise CRM Code
+              </label>
+              <input
+                type="text"
+                value={crmCodeInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCrmCodeInput(val);
+                  const clean = val.trim().toUpperCase();
+                  if (clean) {
+                    const match = franchises.find((f) => f.crmCode?.toUpperCase() === clean);
+                    if (match) {
+                      setSelectedFranchiseId(match._id);
+                    }
+                  }
+                }}
+                placeholder="e.g. QSF0001 (auto-selects franchise)"
+                className="w-full bg-[#0b1320] border border-[#334155] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+              />
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Update To (Franchise Name) <span className="text-rose-400">*</span>
@@ -489,11 +521,17 @@ export default function FranchisePincodeMappingView({ currentUser }: { currentUs
               <select
                 value={selectedFranchiseId}
                 onChange={(e) => {
-                  setSelectedFranchiseId(e.target.value);
+                  const fId = e.target.value;
+                  setSelectedFranchiseId(fId);
+                  const found = franchises.find((f) => f._id === fId);
+                  if (found) {
+                    setCrmCodeInput(found.crmCode || '');
+                  }
                   setCheckResults(null);
                 }}
                 className="w-full bg-[#0b1320] border border-[#334155] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition"
               >
+                <option value="">----Select Franchise----</option>
                 {franchises.map((f) => (
                   <option key={f._id} value={f._id}>
                     {f.firmName} ({f.crmCode || 'FRN'}) {f.city ? `- ${f.city}` : ''}

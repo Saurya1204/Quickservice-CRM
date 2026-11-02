@@ -117,3 +117,4 @@ if (mongoose.models && mongoose.models.FranchisePincodeMapping) {
 export const FranchisePincodeMapping: Model<IFranchisePincodeMapping> =
   mongoose.models.FranchisePincodeMapping ||
   mongoose.model<IFranchisePincodeMapping>('FranchisePincodeMapping', FranchisePincodeMappingSchema);
+

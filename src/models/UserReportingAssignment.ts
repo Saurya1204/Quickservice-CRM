@@ -126,3 +126,4 @@ if (mongoose.models && mongoose.models.UserReportingAssignment) {
 export const UserReportingAssignment: Model<IUserReportingAssignment> =
   mongoose.models.UserReportingAssignment ||
   mongoose.model<IUserReportingAssignment>('UserReportingAssignment', UserReportingAssignmentSchema);
+

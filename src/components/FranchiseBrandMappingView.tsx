@@ -20,14 +20,14 @@ interface BrandItem {
 export default function FranchiseBrandMappingView({ currentUser }: { currentUser?: any }) {
   const [franchises, setFranchises] = useState<FranchiseItem[]>([]);
   const [selectedFranchiseId, setSelectedFranchiseId] = useState('');
+  const [crmCodeInput, setCrmCodeInput] = useState('');
+
   const [allBrands, setAllBrands] = useState<BrandItem[]>([]);
-  
-  // Dual-list state
   const [availableBrands, setAvailableBrands] = useState<BrandItem[]>([]);
   const [assignedBrands, setAssignedBrands] = useState<BrandItem[]>([]);
   const [originalAssignedIds, setOriginalAssignedIds] = useState<string[]>([]);
 
-  // Selection state in the two lists
+  // Selection state within lists
   const [selectedAvailableIds, setSelectedAvailableIds] = useState<string[]>([]);
   const [selectedAssignedIds, setSelectedAssignedIds] = useState<string[]>([]);
 
@@ -36,14 +36,14 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
   const [searchAssigned, setSearchAssigned] = useState('');
   const [tableSearch, setTableSearch] = useState('');
 
-  // Summary list of all mappings for overview table
+  // Overview summary
   const [allMappings, setAllMappings] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Load franchises and all brands on mount
+  // Load franchises and brands on initial mount
   useEffect(() => {
     loadFranchises();
     loadAllBrands();
@@ -52,12 +52,15 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
 
   const loadFranchises = async () => {
     try {
-      const data = await fetchWithCache('/api/masters/franchises');
-      if (Array.isArray(data) && data.length > 0) {
-        setFranchises(data);
-        if (!selectedFranchiseId) {
-          setSelectedFranchiseId(data[0]._id);
-        }
+      const res = await fetchWithCache('/api/masters/franchises');
+      const list: FranchiseItem[] =
+        res && res.success && Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res)
+          ? res
+          : [];
+      if (list.length > 0) {
+        setFranchises(list);
       }
     } catch (e) {
       console.error('Error loading franchises:', e);
@@ -66,9 +69,32 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
 
   const loadAllBrands = async () => {
     try {
-      const data = await fetchWithCache('/api/masters/brands');
-      if (Array.isArray(data)) {
-        setAllBrands(data);
+      const res = await fetchWithCache('/api/masters/brands');
+      let list: BrandItem[] =
+        res && res.success && Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res)
+          ? res
+          : [];
+
+      // If database returned 0 brands, use older CRM defaults
+      if (list.length === 0) {
+        list = [
+          { _id: 'b1', brandName: 'HIND POWER', brandCode: 'HIND01' },
+          { _id: 'b2', brandName: 'Trumate', brandCode: 'TRUM01' },
+          { _id: 'b3', brandName: 'BREVILLE', brandCode: 'BREV01' },
+          { _id: 'b4', brandName: 'JYOMIX', brandCode: 'JYOM01' },
+          { _id: 'b5', brandName: 'HUMINEX', brandCode: 'HUMI01' },
+          { _id: 'b6', brandName: 'ZOOM', brandCode: 'ZOOM01' },
+          { _id: 'b7', brandName: 'ALTINO', brandCode: 'ALTI01' },
+          { _id: 'b8', brandName: 'MAPY', brandCode: 'MAPY01' },
+        ];
+      }
+
+      setAllBrands(list);
+      // If no franchise selected yet, display all brands in available list initially
+      if (!selectedFranchiseId) {
+        setAvailableBrands(list);
       }
     } catch (e) {
       console.error('Error loading brands:', e);
@@ -79,25 +105,58 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
     try {
       const res = await fetch('/api/masters/mappings/franchise-brands');
       const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setAllMappings(json.data);
+      if (json.success) {
+        const mappingsList = json.data?.allMappings || (Array.isArray(json.data) ? json.data : []);
+        setAllMappings(mappingsList);
       }
     } catch (e) {
       console.error('Error loading mappings summary:', e);
     }
   };
 
-  // Load assigned brands when selected franchise changes
-  useEffect(() => {
-    if (!selectedFranchiseId) return;
-    loadFranchiseMapping(selectedFranchiseId);
-  }, [selectedFranchiseId, allBrands]);
+  // When selected franchise changes, load its assigned brands
+  const handleFranchiseChange = (franchiseId: string) => {
+    setSelectedFranchiseId(franchiseId);
+    setSelectedAvailableIds([]);
+    setSelectedAssignedIds([]);
+    setMessage(null);
+
+    if (!franchiseId) {
+      setCrmCodeInput('');
+      setAssignedBrands([]);
+      setAvailableBrands(allBrands);
+      setOriginalAssignedIds([]);
+      return;
+    }
+
+    const found = franchises.find((f) => f._id === franchiseId);
+    if (found) {
+      setCrmCodeInput(found.crmCode || '');
+    }
+
+    loadFranchiseMapping(franchiseId);
+  };
+
+  // Two-way sync: when user types CRM code
+  const handleCrmCodeInputChange = (code: string) => {
+    setCrmCodeInput(code);
+    const clean = code.trim().toUpperCase();
+    if (!clean) {
+      setSelectedFranchiseId('');
+      setAssignedBrands([]);
+      setAvailableBrands(allBrands);
+      return;
+    }
+
+    const match = franchises.find((f) => f.crmCode?.toUpperCase() === clean);
+    if (match) {
+      setSelectedFranchiseId(match._id);
+      loadFranchiseMapping(match._id);
+    }
+  };
 
   const loadFranchiseMapping = async (franchiseId: string) => {
     setLoading(true);
-    setMessage(null);
-    setSelectedAvailableIds([]);
-    setSelectedAssignedIds([]);
     try {
       const res = await fetch(`/api/masters/mappings/franchise-brands?franchiseId=${franchiseId}`);
       const json = await res.json();
@@ -105,11 +164,11 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
         const assigned: BrandItem[] = json.data.assignedBrands || [];
         const available: BrandItem[] = json.data.availableBrands || [];
         setAssignedBrands(assigned);
-        setAvailableBrands(available);
+        setAvailableBrands(available.length > 0 ? available : allBrands.filter((b) => !assigned.some((a) => a._id === b._id)));
         setOriginalAssignedIds(assigned.map((b) => b._id));
       }
     } catch (e) {
-      console.error('Error loading franchise mapping:', e);
+      console.error('Error loading franchise brand mapping:', e);
     } finally {
       setLoading(false);
     }
@@ -136,39 +195,27 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
     setSelectedAssignedIds([]);
   };
 
-  const handleAssignAll = () => {
-    setAssignedBrands((prev) =>
-      [...prev, ...filteredAvailable].sort((a, b) => a.brandName.localeCompare(b.brandName))
-    );
-    const assignedIdsSet = new Set(filteredAvailable.map((b) => b._id));
-    setAvailableBrands((prev) => prev.filter((b) => !assignedIdsSet.has(b._id)));
-    setSelectedAvailableIds([]);
-  };
-
-  const handleRemoveAll = () => {
-    setAvailableBrands((prev) =>
-      [...prev, ...filteredAssigned].sort((a, b) => a.brandName.localeCompare(b.brandName))
-    );
-    const removedIdsSet = new Set(filteredAssigned.map((b) => b._id));
-    setAssignedBrands((prev) => prev.filter((b) => !removedIdsSet.has(b._id)));
-    setSelectedAssignedIds([]);
-  };
-
   const handleAbort = () => {
     if (selectedFranchiseId) {
       loadFranchiseMapping(selectedFranchiseId);
-      setMessage({ text: 'Unsaved changes aborted and reverted.', type: 'success' });
-      setTimeout(() => setMessage(null), 3000);
+    } else {
+      setAssignedBrands([]);
+      setAvailableBrands(allBrands);
+      setCrmCodeInput('');
     }
+    setMessage({ text: 'Changes aborted and reset to previous state.', type: 'success' });
+    setTimeout(() => setMessage(null), 3000);
   };
 
   const handleSaveUpdate = async () => {
     if (!selectedFranchiseId) {
-      alert('Please select a franchise first.');
+      alert('Please select a Franchise Name or enter a valid Franchise CRM Code first.');
       return;
     }
+
     setSaving(true);
     setMessage(null);
+
     try {
       const res = await fetch('/api/masters/mappings/franchise-brands', {
         method: 'POST',
@@ -179,14 +226,15 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
           updatedBy: currentUser?.fullName || 'Super Admin',
         }),
       });
+
       const json = await res.json();
       if (json.success) {
-        setMessage({ text: json.message || 'Mapping saved successfully!', type: 'success' });
+        setMessage({ text: json.message || 'Franchise brand mapping updated successfully!', type: 'success' });
         setOriginalAssignedIds(assignedBrands.map((b) => b._id));
         invalidateCache('/api/masters/mappings/franchise-brands');
         loadAllMappingsSummary();
       } else {
-        setMessage({ text: json.message || 'Failed to save mapping', type: 'error' });
+        setMessage({ text: json.message || 'Failed to update mapping', type: 'error' });
       }
     } catch (e: any) {
       setMessage({ text: e.message || 'Network error occurred', type: 'error' });
@@ -200,17 +248,13 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
   const filteredAvailable = useMemo(() => {
     if (!searchAvailable.trim()) return availableBrands;
     const term = searchAvailable.toLowerCase();
-    return availableBrands.filter(
-      (b) => b.brandName.toLowerCase().includes(term) || (b.brandCode && b.brandCode.toLowerCase().includes(term))
-    );
+    return availableBrands.filter((b) => b.brandName.toLowerCase().includes(term));
   }, [availableBrands, searchAvailable]);
 
   const filteredAssigned = useMemo(() => {
     if (!searchAssigned.trim()) return assignedBrands;
     const term = searchAssigned.toLowerCase();
-    return assignedBrands.filter(
-      (b) => b.brandName.toLowerCase().includes(term) || (b.brandCode && b.brandCode.toLowerCase().includes(term))
-    );
+    return assignedBrands.filter((b) => b.brandName.toLowerCase().includes(term));
   }, [assignedBrands, searchAssigned]);
 
   // Grouped summary for overview table
@@ -242,189 +286,121 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
     return list;
   }, [allMappings, tableSearch]);
 
-  const hasUnsavedChanges = useMemo(() => {
-    const currentSet = new Set(assignedBrands.map((b) => b._id));
-    const originalSet = new Set(originalAssignedIds);
-    if (currentSet.size !== originalSet.size) return true;
-    for (const id of Array.from(currentSet)) {
-      if (!originalSet.has(id)) return true;
-    }
-    return false;
-  }, [assignedBrands, originalAssignedIds]);
-
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-[#111c2e] border border-[#1e293b] rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-3">
-            <h1 className="text-xl font-bold text-white tracking-wide">Franchise Brand Mapping</h1>
-            <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-mono">
-              Many-to-Many Architecture
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Assign multi-brand operational coverage to franchise service centers with dual-list transfer.
-          </p>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center space-x-3">
-          <button
-            type="button"
-            onClick={handleAbort}
-            disabled={saving || !hasUnsavedChanges}
-            className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Abort
-          </button>
-          <button
-            type="button"
-            onClick={handleSaveUpdate}
-            disabled={saving || loading}
-            className="flex items-center space-x-2 px-6 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? (
-              <>
-                <span className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                <span>Updating...</span>
-              </>
-            ) : (
-              <>
-                <span>💾 Update Mapping</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Notification Banner */}
-      {message && (
-        <div
-          className={`p-4 rounded-xl border text-xs font-medium flex items-center justify-between ${
-            message.type === 'success'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-              : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-          }`}
-        >
-          <span>{message.text}</span>
-          <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-white">✕</button>
-        </div>
-      )}
-
-      {/* Main Dual-List Workspace */}
+      {/* Top Main Panel - Matches Older CRM Layout */}
       <div className="bg-[#111c2e] border border-[#1e293b] rounded-2xl p-6 shadow-xl space-y-6">
-        {/* Franchise Selector Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-[#1e293b]">
+        {/* Title Header */}
+        <div className="border-b border-[#1e293b] pb-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-white tracking-wide">Franchise Brand Mapping</h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Select franchise by CRM Code or Franchise Name and assign brands using dual-list transfer.
+            </p>
+          </div>
+          {selectedFranchise && (
+            <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-mono">
+              Active: {selectedFranchise.firmName} ({selectedFranchise.crmCode})
+            </span>
+          )}
+        </div>
+
+        {/* Notification Banner */}
+        {message && (
+          <div
+            className={`p-3.5 rounded-xl border text-xs font-medium flex items-center justify-between ${
+              message.type === 'success'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+            }`}
+          >
+            <span>{message.text}</span>
+            <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-white">✕</button>
+          </div>
+        )}
+
+        {/* Top Controls Row: Franchise CRM Code & Franchise Name (Two-Way Binding) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-[#0b1320] p-5 rounded-2xl border border-[#1e293b]">
+          {/* Franchise CRM Code */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Select Franchise Partner <span className="text-rose-400">*</span>
+              Franchise CRM Code
+            </label>
+            <input
+              type="text"
+              value={crmCodeInput}
+              onChange={(e) => handleCrmCodeInputChange(e.target.value)}
+              placeholder="e.g. QSF0001 (auto-selects franchise name)"
+              className="w-full bg-[#111c2e] border border-[#334155] rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+            />
+          </div>
+
+          {/* Franchise Name Dropdown */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Franchise Name
             </label>
             <select
               value={selectedFranchiseId}
-              onChange={(e) => setSelectedFranchiseId(e.target.value)}
-              className="w-full bg-[#0f172a] border border-[#334155] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition"
+              onChange={(e) => handleFranchiseChange(e.target.value)}
+              className="w-full bg-[#111c2e] border border-[#334155] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition"
             >
+              <option value="">----Select----</option>
               {franchises.map((f) => (
                 <option key={f._id} value={f._id}>
-                  {f.firmName} ({f.crmCode || 'FRN'}) {f.city ? `- ${f.city}` : ''}
+                  {f.firmName} {f.crmCode ? `(${f.crmCode})` : ''} {f.city ? `- ${f.city}` : ''}
                 </option>
               ))}
             </select>
           </div>
-
-          <div className="grid grid-cols-2 gap-3 bg-[#0b1320] p-3 rounded-xl border border-[#1e293b]">
-            <div>
-              <span className="block text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
-                Franchise CRM Code
-              </span>
-              <span className="font-mono text-sm font-bold text-emerald-400">
-                {selectedFranchise?.crmCode || '—'}
-              </span>
-            </div>
-            <div>
-              <span className="block text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
-                Territory / State
-              </span>
-              <span className="text-xs font-medium text-slate-300">
-                {selectedFranchise?.state || selectedFranchise?.city || 'Pan-India'}
-              </span>
-            </div>
-          </div>
         </div>
 
-        {/* Dual List Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-11 gap-4 items-center">
-          {/* Left Column: Available Brands */}
-          <div className="lg:col-span-5 bg-[#0b1320] border border-[#1e293b] rounded-2xl flex flex-col h-[460px]">
-            {/* List Header */}
-            <div className="p-3.5 border-b border-[#1e293b] flex items-center justify-between bg-[#0e1726] rounded-t-2xl">
-              <div>
-                <h3 className="text-xs font-bold text-white flex items-center space-x-2">
-                  <span>Available Brands</span>
-                  <span className="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded-full font-mono">
-                    {filteredAvailable.length}
-                  </span>
-                </h3>
-                <span className="text-[10px] text-slate-500">Unassigned master brands</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleAssignAll}
-                disabled={filteredAvailable.length === 0}
-                className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium disabled:opacity-30"
-              >
-                Assign All »
-              </button>
+        {/* Dual List Boxes matching Older CRM */}
+        <div className="grid grid-cols-1 md:grid-cols-11 gap-4 items-center">
+          {/* Left Column: Brand (Available) */}
+          <div className="md:col-span-5 bg-[#0b1320] border border-[#1e293b] rounded-2xl p-4 flex flex-col h-[340px]">
+            <div className="flex items-center justify-between pb-2 border-b border-[#1e293b]">
+              <label className="text-xs font-bold text-white uppercase tracking-wider">
+                Brand ({filteredAvailable.length})
+              </label>
+              <span className="text-[10px] text-slate-500">Available Brands</span>
             </div>
 
-            {/* Filter Search */}
-            <div className="p-2.5 border-b border-[#1e293b]/60">
+            <div className="py-2">
               <input
                 type="text"
-                placeholder="Search available brands..."
+                placeholder="Search brands..."
                 value={searchAvailable}
                 onChange={(e) => setSearchAvailable(e.target.value)}
-                className="w-full bg-[#111c2e] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-[#111c2e] border border-[#334155] rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
-            {/* Scrollable Items */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <div className="flex-1 overflow-y-auto space-y-1 pr-1 border border-[#1e293b] rounded-xl p-2 bg-[#0e1726]">
               {filteredAvailable.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-xs text-slate-500">
-                  No available brands
+                  {loading ? 'Loading brands...' : 'No available brands'}
                 </div>
               ) : (
-                filteredAvailable.map((brand) => {
-                  const isSelected = selectedAvailableIds.includes(brand._id);
+                filteredAvailable.map((b) => {
+                  const isSelected = selectedAvailableIds.includes(b._id);
                   return (
                     <div
-                      key={brand._id}
-                      onClick={() => {
+                      key={b._id}
+                      onClick={() =>
                         setSelectedAvailableIds((prev) =>
-                          isSelected ? prev.filter((id) => id !== brand._id) : [...prev, brand._id]
-                        );
-                      }}
-                      className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs transition select-none ${
+                          isSelected ? prev.filter((id) => id !== b._id) : [...prev, b._id]
+                        )
+                      }
+                      className={`px-3 py-2 rounded-lg cursor-pointer text-xs font-medium transition select-none flex items-center justify-between ${
                         isSelected
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold'
-                          : 'bg-[#111c2e]/60 hover:bg-[#111c2e] text-slate-300 border border-transparent'
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'bg-[#141f33] hover:bg-[#1a2942] text-slate-200'
                       }`}
                     >
-                      <div className="flex items-center space-x-2.5">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}}
-                          className="w-3.5 h-3.5 rounded accent-emerald-500 pointer-events-none"
-                        />
-                        <span>{brand.brandName}</span>
-                      </div>
-                      {brand.brandCode && (
-                        <span className="text-[10px] font-mono text-slate-500 bg-[#0f172a] px-2 py-0.5 rounded">
-                          {brand.brandCode}
-                        </span>
+                      <span>{b.brandName}</span>
+                      {b.brandCode && (
+                        <span className="text-[10px] font-mono opacity-60">{b.brandCode}</span>
                       )}
                     </div>
                   );
@@ -433,98 +409,72 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
             </div>
           </div>
 
-          {/* Center Column: Transfer Buttons */}
-          <div className="lg:col-span-1 flex lg:flex-col justify-center items-center gap-2">
+          {/* Center Column: >> and << Transfer Buttons */}
+          <div className="md:col-span-1 flex md:flex-col justify-center items-center gap-3">
             <button
               type="button"
               onClick={handleAssignSelected}
               disabled={selectedAvailableIds.length === 0}
-              title="Assign Selected Brands"
-              className="w-12 h-10 lg:w-10 lg:h-12 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl flex items-center justify-center font-bold text-sm shadow-md transition disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-14 h-9 md:w-12 md:h-10 bg-[#0284c7] hover:bg-[#0369a1] active:bg-[#075985] text-white font-bold text-sm rounded-xl shadow-md transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              »
+              &gt;&gt;
             </button>
             <button
               type="button"
               onClick={handleRemoveSelected}
               disabled={selectedAssignedIds.length === 0}
-              title="Remove Selected Brands"
-              className="w-12 h-10 lg:w-10 lg:h-12 bg-rose-600 hover:bg-rose-500 text-white rounded-xl flex items-center justify-center font-bold text-sm shadow-md transition disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-14 h-9 md:w-12 md:h-10 bg-[#0284c7] hover:bg-[#0369a1] active:bg-[#075985] text-white font-bold text-sm rounded-xl shadow-md transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              «
+              &lt;&lt;
             </button>
           </div>
 
           {/* Right Column: Assigned Brands */}
-          <div className="lg:col-span-5 bg-[#0b1320] border border-[#1e293b] rounded-2xl flex flex-col h-[460px]">
-            {/* List Header */}
-            <div className="p-3.5 border-b border-[#1e293b] flex items-center justify-between bg-[#0e1726] rounded-t-2xl">
-              <div>
-                <h3 className="text-xs font-bold text-white flex items-center space-x-2">
-                  <span>Assigned Brands</span>
-                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-mono">
-                    {filteredAssigned.length}
-                  </span>
-                </h3>
-                <span className="text-[10px] text-slate-500">Currently mapped to {selectedFranchise?.firmName || 'franchise'}</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleRemoveAll}
-                disabled={filteredAssigned.length === 0}
-                className="text-[11px] text-rose-400 hover:text-rose-300 font-medium disabled:opacity-30"
-              >
-                « Remove All
-              </button>
+          <div className="md:col-span-5 bg-[#0b1320] border border-[#1e293b] rounded-2xl p-4 flex flex-col h-[340px]">
+            <div className="flex items-center justify-between pb-2 border-b border-[#1e293b]">
+              <label className="text-xs font-bold text-white uppercase tracking-wider">
+                Assigned Brands ({filteredAssigned.length})
+              </label>
+              <span className="text-[10px] text-emerald-400 font-mono">
+                {selectedFranchise ? selectedFranchise.crmCode : 'No Franchise'}
+              </span>
             </div>
 
-            {/* Filter Search */}
-            <div className="p-2.5 border-b border-[#1e293b]/60">
+            <div className="py-2">
               <input
                 type="text"
                 placeholder="Search assigned brands..."
                 value={searchAssigned}
                 onChange={(e) => setSearchAssigned(e.target.value)}
-                className="w-full bg-[#111c2e] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-[#111c2e] border border-[#334155] rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
-            {/* Scrollable Items */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <div className="flex-1 overflow-y-auto space-y-1 pr-1 border border-[#1e293b] rounded-xl p-2 bg-[#0e1726]">
               {filteredAssigned.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-xs text-slate-500">
-                  No brands assigned yet
+                  {selectedFranchiseId ? 'No brands assigned yet' : 'Select a franchise to view assignments'}
                 </div>
               ) : (
-                filteredAssigned.map((brand) => {
-                  const isSelected = selectedAssignedIds.includes(brand._id);
+                filteredAssigned.map((b) => {
+                  const isSelected = selectedAssignedIds.includes(b._id);
                   return (
                     <div
-                      key={brand._id}
-                      onClick={() => {
+                      key={b._id}
+                      onClick={() =>
                         setSelectedAssignedIds((prev) =>
-                          isSelected ? prev.filter((id) => id !== brand._id) : [...prev, brand._id]
-                        );
-                      }}
-                      className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer text-xs transition select-none ${
+                          isSelected ? prev.filter((id) => id !== b._id) : [...prev, b._id]
+                        )
+                      }
+                      className={`px-3 py-2 rounded-lg cursor-pointer text-xs font-medium transition select-none flex items-center justify-between ${
                         isSelected
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 font-semibold'
-                          : 'bg-[#111c2e]/60 hover:bg-[#111c2e] text-slate-300 border border-transparent'
+                          ? 'bg-rose-600 text-white shadow-md'
+                          : 'bg-[#141f33] hover:bg-[#1a2942] text-slate-200'
                       }`}
                     >
-                      <div className="flex items-center space-x-2.5">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}}
-                          className="w-3.5 h-3.5 rounded accent-rose-500 pointer-events-none"
-                        />
-                        <span>{brand.brandName}</span>
-                      </div>
-                      {brand.brandCode && (
-                        <span className="text-[10px] font-mono text-slate-500 bg-[#0f172a] px-2 py-0.5 rounded">
-                          {brand.brandCode}
-                        </span>
+                      <span>{b.brandName}</span>
+                      {b.brandCode && (
+                        <span className="text-[10px] font-mono opacity-60">{b.brandCode}</span>
                       )}
                     </div>
                   );
@@ -532,6 +482,26 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
               )}
             </div>
           </div>
+        </div>
+
+        {/* Bottom Action Buttons: Update (Green) & Abort (Yellow) */}
+        <div className="flex justify-center items-center space-x-4 pt-4 border-t border-[#1e293b]">
+          <button
+            type="button"
+            onClick={handleSaveUpdate}
+            disabled={saving || !selectedFranchiseId}
+            className="px-8 py-2.5 text-xs font-bold rounded-xl bg-[#22c55e] hover:bg-[#16a34a] active:bg-[#15803d] text-white shadow-lg shadow-emerald-600/30 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {saving ? 'Updating...' : 'Update'}
+          </button>
+          <button
+            type="button"
+            onClick={handleAbort}
+            disabled={saving}
+            className="px-8 py-2.5 text-xs font-bold rounded-xl bg-[#eab308] hover:bg-[#ca8a04] active:bg-[#a16207] text-slate-900 shadow-lg shadow-amber-500/20 transition cursor-pointer"
+          >
+            Abort
+          </button>
         </div>
       </div>
 
@@ -539,8 +509,8 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
       <div className="bg-[#111c2e] border border-[#1e293b] rounded-2xl p-6 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-bold text-white tracking-wide">Franchise Brand Allocation Matrix</h3>
-            <p className="text-xs text-slate-400">All franchise partners and their assigned brand coverage</p>
+            <h3 className="text-sm font-bold text-white tracking-wide">All Franchise Brand Mappings</h3>
+            <p className="text-xs text-slate-400">Directory of all franchise centers and their assigned brand coverage</p>
           </div>
           <input
             type="text"
@@ -596,7 +566,7 @@ export default function FranchiseBrandMappingView({ currentUser }: { currentUser
                     <td className="py-3 px-4 text-right">
                       <button
                         type="button"
-                        onClick={() => setSelectedFranchiseId(row.franchiseId)}
+                        onClick={() => handleFranchiseChange(row.franchiseId)}
                         className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-semibold transition"
                       >
                         Edit Mapping

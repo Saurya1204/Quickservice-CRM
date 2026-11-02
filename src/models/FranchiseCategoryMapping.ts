@@ -73,3 +73,4 @@ if (mongoose.models && mongoose.models.FranchiseCategoryMapping) {
 export const FranchiseCategoryMapping: Model<IFranchiseCategoryMapping> =
   mongoose.models.FranchiseCategoryMapping ||
   mongoose.model<IFranchiseCategoryMapping>('FranchiseCategoryMapping', FranchiseCategoryMappingSchema);
+

@@ -26,7 +26,28 @@ export async function GET(req: Request) {
       query.$or = [{ brandName: regex }, { brandCode: regex }, { clientName: regex }];
     }
 
-    const brands = await Brand.find(query).sort({ createdAt: -1 }).lean();
+    let brands = await Brand.find(query).sort({ createdAt: -1 }).lean();
+
+    // Auto-seed older CRM master brands if collection is empty
+    if (brands.length === 0 && !clientId && !search && !status) {
+      const defaultBrands = [
+        { brandName: 'HIND POWER', brandCode: 'HIND01', status: 'ACTIVE' },
+        { brandName: 'Trumate', brandCode: 'TRUM01', status: 'ACTIVE' },
+        { brandName: 'BREVILLE', brandCode: 'BREV01', status: 'ACTIVE' },
+        { brandName: 'JYOMIX', brandCode: 'JYOM01', status: 'ACTIVE' },
+        { brandName: 'HUMINEX', brandCode: 'HUMI01', status: 'ACTIVE' },
+        { brandName: 'ZOOM', brandCode: 'ZOOM01', status: 'ACTIVE' },
+        { brandName: 'ALTINO', brandCode: 'ALTI01', status: 'ACTIVE' },
+        { brandName: 'MAPY', brandCode: 'MAPY01', status: 'ACTIVE' },
+      ];
+      try {
+        await Brand.insertMany(defaultBrands);
+        brands = await Brand.find(query).sort({ createdAt: -1 }).lean();
+      } catch (seedErr) {
+        console.warn('Brands auto-seed skipped:', seedErr);
+      }
+    }
+
     return NextResponse.json(
       { success: true, data: brands },
       { headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' } }
