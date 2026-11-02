@@ -855,7 +855,7 @@ export default function CallRegistrationModule({
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               {isSuperAdmin && (
                 <button
                   type="button"
@@ -1075,20 +1075,20 @@ export default function CallRegistrationModule({
       {viewMode === 'form' && (
         <form onSubmit={handleSubmitRegistration} className="space-y-6">
           {/* Top Form Navigation Bar */}
-          <div className="bg-[#111c2e] p-5 rounded-2xl border border-[#24344d] shadow-xl flex items-center justify-between gap-4">
+          <div className="bg-[#111c2e] p-4 sm:p-5 rounded-2xl border border-[#24344d] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => setViewMode('search')}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-bold border border-[#24344d]"
+                  className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold border border-[#24344d] transition"
                 >
                   ← Back to Search
                 </button>
-                <h1 className="text-lg font-bold text-white tracking-wide">
+                <h1 className="text-base sm:text-lg font-bold text-white tracking-wide">
                   New Service Call Registration
                 </h1>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold font-mono">
                   Standard CRM Format
                 </span>
               </div>
@@ -1097,11 +1097,11 @@ export default function CallRegistrationModule({
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
               <button
                 type="button"
                 onClick={() => setViewMode('search')}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-[#24344d] transition"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg border border-[#24344d] transition flex-1 sm:flex-initial"
               >
                 Cancel
               </button>
@@ -1109,7 +1109,7 @@ export default function CallRegistrationModule({
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-lg shadow-emerald-900/30 transition flex items-center gap-1.5"
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-lg shadow-emerald-900/30 transition flex items-center justify-center gap-1.5 flex-1 sm:flex-initial cursor-pointer"
               >
                 <span>{submitting ? 'Submitting Registration...' : '✓ Submit Registration'}</span>
               </button>

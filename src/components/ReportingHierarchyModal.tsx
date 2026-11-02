@@ -347,7 +347,7 @@ export default function ReportingHierarchyModal({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-[#1e293b] bg-[#0b1320] px-6">
+        <div className="flex border-b border-[#1e293b] bg-[#0b1320] px-4 sm:px-6 overflow-x-auto whitespace-nowrap custom-horizontal-scrollbar">
           <button
             onClick={() => setActiveTab('roles')}
             className={`py-3 px-5 text-xs font-bold border-b-2 transition flex items-center space-x-2 ${

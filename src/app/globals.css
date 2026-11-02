@@ -7,11 +7,15 @@
   --foreground: #f8fafc;
 }
 
+html,
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Custom Scrollbars matching Quickserves Enterprise CRM */

@@ -315,7 +315,7 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
             </p>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => {
                 setActiveTab('callView');
@@ -609,7 +609,7 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
                 placeholder="Search Call No / Mobile / City..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 w-52"
+                className="bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 w-full sm:w-56"
               />
             </div>
 

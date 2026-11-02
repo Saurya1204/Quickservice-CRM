@@ -40,29 +40,39 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0f172a] flex items-center justify-center p-4">
-      <div className="bg-[#1e293b] border border-[#334155] rounded-2xl p-8 w-full max-w-md shadow-2xl space-y-6">
-        <div className="text-center space-y-2">
-          <span className="text-emerald-400 font-extrabold text-2xl tracking-wider">QUICKSERVES</span>
-          <h1 className="text-xl font-bold text-white mt-1">Quickserves CRM Login</h1>
-          <p className="text-xs text-slate-400">Please enter your details to log in to your account</p>
+    <div className="fixed inset-0 z-50 bg-[#0f172a] flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl space-y-6 my-auto">
+        {/* 1. Official Quickserves Logo, 2. Heading, 3. Description */}
+        <div className="text-center space-y-3">
+          <div className="flex justify-center items-center py-1">
+            <img
+              src="/assets/quickserves-logo.png"
+              alt="Quickserves Official Logo"
+              className="h-9 sm:h-11 w-auto max-w-[220px] sm:max-w-[260px] object-contain select-none transition"
+            />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Quickserves CRM Login</h1>
+            <p className="text-xs text-slate-400 mt-1">Please enter your details to log in to your account</p>
+          </div>
         </div>
 
+        {/* 4. Username, 5. Password, 6. Secure Login */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Username</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Username</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
               placeholder="Enter username"
-              className="w-full bg-[#172033] border border-[#334155] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[#172033] border border-[#334155] rounded-xl px-3.5 py-3 text-sm text-white min-h-[44px] focus:outline-none focus:border-emerald-500 transition"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Password</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Password</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -70,30 +80,36 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="Enter password"
-                className="w-full bg-[#172033] border border-[#334155] rounded-lg px-3 py-2.5 pr-10 text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-[#172033] border border-[#334155] rounded-xl px-3.5 py-3 pr-11 text-sm text-white min-h-[44px] focus:outline-none focus:border-emerald-500 transition"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-slate-400 hover:text-white focus:outline-none"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-sm text-slate-400 hover:text-white focus:outline-none min-w-[44px] justify-center"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 <span>{showPassword ? '🔒' : '👁️'}</span>
               </button>
             </div>
           </div>
 
-          {error && <div className="text-xs text-rose-400 font-medium">{error}</div>}
+          {error && (
+            <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-lg font-medium">
+              ⚠️ {error}
+            </div>
+          )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm py-3 rounded-lg transition shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+            className="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-sm py-3 rounded-xl transition shadow-lg shadow-emerald-600/20 disabled:opacity-50 min-h-[44px] flex items-center justify-center cursor-pointer"
           >
             {loading ? 'Authenticating...' : 'Secure Login'}
           </button>
         </form>
 
-        <div className="text-center text-xs text-slate-500 pt-2 border-t border-[#334155]">
+        {/* 7. Authorized Personnel Only Footer */}
+        <div className="text-center text-xs text-slate-500 pt-3 border-t border-[#334155]">
           Authorized Personnel Only • Quickserves OS
         </div>
       </div>

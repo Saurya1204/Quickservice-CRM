@@ -340,7 +340,7 @@ export default function UploaderView({
                     Upload Excel <span className="text-rose-400">*</span>
                   </label>
                   <div className="md:col-span-2">
-                    <div className="flex items-center space-x-3">
+                    <div className="flex flex-wrap items-center gap-2.5">
                       <label
                         htmlFor="bulkExcelFileInput"
                         className="bg-slate-800 hover:bg-slate-700 text-white border border-[#334155] text-xs font-medium px-4 py-2 rounded-lg shadow-sm cursor-pointer transition flex items-center space-x-2"
@@ -400,7 +400,7 @@ export default function UploaderView({
                   </p>
                 </div>
 
-                <div className="flex items-center space-x-3">
+                <div className="flex flex-wrap items-center gap-2.5">
                   {validationResult.errors?.length > 0 && (
                     <button
                       onClick={() => handleDownloadErrorReport(validationResult.batchId)}

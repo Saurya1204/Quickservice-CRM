@@ -7,6 +7,8 @@ interface SidebarProps {
   onSelectSection: (section: string) => void;
   onLogout: () => void;
   currentUser?: any;
+  isOpenMobile?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export default function Sidebar({
@@ -14,7 +16,15 @@ export default function Sidebar({
   onSelectSection,
   onLogout,
   currentUser,
+  isOpenMobile,
+  onCloseMobile,
 }: SidebarProps) {
+  const handleItemClick = (sec: string) => {
+    onSelectSection(sec);
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
+  };
   // Determine role and super admin status
   const roleCode = (currentUser?.roleCode || currentUser?.role || 'SUPER_ADMIN')
     .toUpperCase()
@@ -166,37 +176,67 @@ export default function Sidebar({
     }`;
 
   return (
-    <div className="w-64 bg-[#111c2e] border-r border-[#1e293b] h-screen fixed left-0 top-0 overflow-y-auto z-20 flex flex-col justify-between select-none">
-      <div>
-        {/* Logo Header */}
-        <div className="p-4 bg-[#0d1624] border-b border-[#1e293b]">
-          <div className="flex items-center justify-between">
-            <span className="text-[#10b981] font-extrabold text-lg tracking-wider">QUICKSERVES</span>
-            <button
-              onClick={onLogout}
-              title="Logout"
-              className="text-[11px] text-rose-400 hover:text-rose-300 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 font-medium transition"
-            >
-              Logout
-            </button>
-          </div>
-          {currentUser && (
-            <div className="mt-2 pt-2 border-t border-[#1e293b]/70 flex items-center justify-between">
-              <span className="text-[11px] text-slate-300 font-medium truncate max-w-[120px]">
-                {currentUser.fullName || currentUser.username}
-              </span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono font-semibold">
-                {currentUser.role || 'Super Admin'}
-              </span>
+    <>
+      {/* Mobile Drawer Backdrop */}
+      {isOpenMobile && (
+        <div
+          onClick={onCloseMobile}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden transition-opacity"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Container: Fixed on Desktop, Slide-In Drawer on Mobile */}
+      <div
+        className={`w-64 max-w-[85vw] bg-[#111c2e] border-r border-[#1e293b] h-screen fixed left-0 top-0 overflow-y-auto z-50 md:z-20 flex flex-col justify-between select-none transition-transform duration-300 ease-in-out ${
+          isOpenMobile ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        <div>
+          {/* Top of Sidebar: 1. Official Quickserves Logo */}
+          <div className="p-4 bg-[#0d1624] border-b border-[#1e293b]">
+            <div className="flex items-center justify-between mb-3">
+              <img
+                src="/assets/quickserves-logo.png"
+                alt="Quickserves Official Logo"
+                className="h-7 sm:h-8 w-auto max-w-[150px] object-contain select-none"
+              />
+              {onCloseMobile && (
+                <button
+                  onClick={onCloseMobile}
+                  className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition text-sm flex items-center justify-center min-w-[32px] min-h-[32px]"
+                  aria-label="Close navigation drawer"
+                >
+                  ✕
+                </button>
+              )}
             </div>
-          )}
-        </div>
+
+            {/* 2. Super Administrator profile & 3. Logout option */}
+            <div className="pt-2.5 border-t border-[#1e293b]/80 flex items-center justify-between gap-2">
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs text-slate-200 font-bold truncate">
+                  {currentUser?.fullName || currentUser?.username || 'Super Administrator'}
+                </span>
+                <span className="text-[10px] text-emerald-400 font-mono font-medium">
+                  {currentUser?.role || 'Super Admin'}
+                </span>
+              </div>
+              <button
+                onClick={onLogout}
+                title="Logout"
+                className="text-[11px] text-rose-400 hover:text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded border border-rose-500/20 font-medium transition cursor-pointer whitespace-nowrap"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
 
         <nav className="divide-y divide-[#1e293b]/70">
           {/* 1. Dashboard */}
           <div>
             <button
-              onClick={() => onSelectSection('dashboard')}
+              onClick={() => handleItemClick('dashboard')}
               className={headerButtonClass(currentSection === 'dashboard')}
             >
               <span>{isSuperAdmin ? 'Admin Dashboard' : 'User Dashboard'}</span>
@@ -214,7 +254,7 @@ export default function Sidebar({
                 <div className="bg-[#0b1320] py-1 border-t border-[#1e293b]/50">
                   {canAccess('roleMaster') && (
                     <button
-                      onClick={() => onSelectSection('roleMaster')}
+                      onClick={() => handleItemClick('roleMaster')}
                       className={`${itemClass('roleMaster')} text-emerald-400 font-semibold flex items-center justify-between`}
                     >
                       <span>Role Master</span>
@@ -222,67 +262,67 @@ export default function Sidebar({
                     </button>
                   )}
                   {canAccess('branchMaster') && (
-                    <button onClick={() => onSelectSection('branchMaster')} className={itemClass('branchMaster')}>
+                    <button onClick={() => handleItemClick('branchMaster')} className={itemClass('branchMaster')}>
                       Branch Master
                     </button>
                   )}
                   {canAccess('franchiseMaster') && (
-                    <button onClick={() => onSelectSection('franchiseMaster')} className={itemClass('franchiseMaster')}>
+                    <button onClick={() => handleItemClick('franchiseMaster')} className={itemClass('franchiseMaster')}>
                       Franchise Master
                     </button>
                   )}
                   {canAccess('otherMasters') && (
-                    <button onClick={() => onSelectSection('freelancerMaster')} className={itemClass('freelancerMaster')}>
+                    <button onClick={() => handleItemClick('freelancerMaster')} className={itemClass('freelancerMaster')}>
                       Freelancer Master
                     </button>
                   )}
                   {canAccess('technicianMaster') && (
-                    <button onClick={() => onSelectSection('technicianMaster')} className={itemClass('technicianMaster')}>
+                    <button onClick={() => handleItemClick('technicianMaster')} className={itemClass('technicianMaster')}>
                       Technician Master
                     </button>
                   )}
                   {canAccess('clientMaster') && (
-                    <button onClick={() => onSelectSection('clientMaster')} className={itemClass('clientMaster')}>
+                    <button onClick={() => handleItemClick('clientMaster')} className={itemClass('clientMaster')}>
                       Client Master
                     </button>
                   )}
                   {canAccess('brandMaster') && (
-                    <button onClick={() => onSelectSection('brandMaster')} className={itemClass('brandMaster')}>
+                    <button onClick={() => handleItemClick('brandMaster')} className={itemClass('brandMaster')}>
                       Brand Master
                     </button>
                   )}
                   {canAccess('categoryMaster') && (
-                    <button onClick={() => onSelectSection('categoryMaster')} className={itemClass('categoryMaster')}>
+                    <button onClick={() => handleItemClick('categoryMaster')} className={itemClass('categoryMaster')}>
                       Category Master
                     </button>
                   )}
                   {canAccess('otherMasters') && (
                     <>
-                      <button onClick={() => onSelectSection('productMaster')} className={itemClass('productMaster')}>
+                      <button onClick={() => handleItemClick('productMaster')} className={itemClass('productMaster')}>
                         Product Master
                       </button>
-                      <button onClick={() => onSelectSection('modelMaster')} className={itemClass('modelMaster')}>
+                      <button onClick={() => handleItemClick('modelMaster')} className={itemClass('modelMaster')}>
                         Model Master
                       </button>
-                      <button onClick={() => onSelectSection('symptomMaster')} className={itemClass('symptomMaster')}>
+                      <button onClick={() => handleItemClick('symptomMaster')} className={itemClass('symptomMaster')}>
                         Symptom Master
                       </button>
-                      <button onClick={() => onSelectSection('causeMaster')} className={itemClass('causeMaster')}>
+                      <button onClick={() => handleItemClick('causeMaster')} className={itemClass('causeMaster')}>
                         Cause Master
                       </button>
-                      <button onClick={() => onSelectSection('analysisMaster')} className={itemClass('analysisMaster')}>
+                      <button onClick={() => handleItemClick('analysisMaster')} className={itemClass('analysisMaster')}>
                         Analysis Master
                       </button>
-                      <button onClick={() => onSelectSection('sparesMaster')} className={itemClass('sparesMaster')}>
+                      <button onClick={() => handleItemClick('sparesMaster')} className={itemClass('sparesMaster')}>
                         Spares Master
                       </button>
-                      <button onClick={() => onSelectSection('cityMaster')} className={itemClass('cityMaster')}>
+                      <button onClick={() => handleItemClick('cityMaster')} className={itemClass('cityMaster')}>
                         City Master
                       </button>
-                      <button onClick={() => onSelectSection('localityMaster')} className={itemClass('localityMaster')}>
+                      <button onClick={() => handleItemClick('localityMaster')} className={itemClass('localityMaster')}>
                         Locality Master
                       </button>
-                      <button onClick={() => onSelectSection('vendorMaster')} className={itemClass('vendorMaster')}>
+                      <button onClick={() => handleItemClick('vendorMaster')} className={itemClass('vendorMaster')}>
                         Vendor Master
                       </button>
                     </>
@@ -301,16 +341,16 @@ export default function Sidebar({
               </button>
               {openMenus.mapping && (
                 <div className="bg-[#0b1320] py-1 border-t border-[#1e293b]/50">
-                  <button onClick={() => onSelectSection('brandMapping')} className={itemClass('brandMapping')}>
+                  <button onClick={() => handleItemClick('brandMapping')} className={itemClass('brandMapping')}>
                     Franchise Brand Mapping
                   </button>
-                  <button onClick={() => onSelectSection('categoryMapping')} className={itemClass('categoryMapping')}>
+                  <button onClick={() => handleItemClick('categoryMapping')} className={itemClass('categoryMapping')}>
                     Franchise Category Mapping
                   </button>
-                  <button onClick={() => onSelectSection('pincodeMapping')} className={itemClass('pincodeMapping')}>
+                  <button onClick={() => handleItemClick('pincodeMapping')} className={itemClass('pincodeMapping')}>
                     Franchise Pincode Mapping
                   </button>
-                  <button onClick={() => onSelectSection('warehouseMapping')} className={itemClass('warehouseMapping')}>
+                  <button onClick={() => handleItemClick('warehouseMapping')} className={itemClass('warehouseMapping')}>
                     Warehouse Mapping
                   </button>
                 </div>
@@ -328,76 +368,76 @@ export default function Sidebar({
               {openMenus.call && (
                 <div className="bg-[#0b1320] py-1 border-t border-[#1e293b]/50">
                   {canAccess('callManagement', 'callRegistration') && (
-                    <button onClick={() => onSelectSection('callRegistration')} className={itemClass('callRegistration')}>
+                    <button onClick={() => handleItemClick('callRegistration')} className={itemClass('callRegistration')}>
                       Call Registration
                     </button>
                   )}
                   {canAccess('callManagement', 'callView') && (
-                    <button onClick={() => onSelectSection('callView')} className={itemClass('callView')}>
+                    <button onClick={() => handleItemClick('callView')} className={itemClass('callView')}>
                       Call View
                     </button>
                   )}
                   {canAccess('callManagement', 'callEdit') && (
-                    <button onClick={() => onSelectSection('callEdit')} className={itemClass('callEdit')}>
+                    <button onClick={() => handleItemClick('callEdit')} className={itemClass('callEdit')}>
                       Call Edit
                     </button>
                   )}
                   {canAccess('callManagement', 'callReminder') && (
-                    <button onClick={() => onSelectSection('callReminder')} className={itemClass('callReminder')}>
+                    <button onClick={() => handleItemClick('callReminder')} className={itemClass('callReminder')}>
                       Call Reminder
                     </button>
                   )}
                   {canAccess('callManagement', 'callAppointment') && (
-                    <button onClick={() => onSelectSection('callAppointment')} className={itemClass('callAppointment')}>
+                    <button onClick={() => handleItemClick('callAppointment')} className={itemClass('callAppointment')}>
                       Call Appointment
                     </button>
                   )}
                   {canAccess('callManagement', 'callReschedule') && (
-                    <button onClick={() => onSelectSection('callReschedule')} className={itemClass('callReschedule')}>
+                    <button onClick={() => handleItemClick('callReschedule')} className={itemClass('callReschedule')}>
                       Call Reschedule
                     </button>
                   )}
                   {canAccess('callManagement', 'callTransfer') && (
-                    <button onClick={() => onSelectSection('callTransfer')} className={itemClass('callTransfer')}>
+                    <button onClick={() => handleItemClick('callTransfer')} className={itemClass('callTransfer')}>
                       Call Transfer
                     </button>
                   )}
                   {/* Reopen Call MenuItem */}
                   {canAccess('callManagement', 'callReopen') && (
                     <button
-                      onClick={() => onSelectSection('callReopen')}
+                      onClick={() => handleItemClick('callReopen')}
                       className={`${itemClass('callReopen')} text-amber-300 font-semibold`}
                     >
                       🔄 Reopen Call
                     </button>
                   )}
                   {canAccess('callManagement', 'callCancel') && (
-                    <button onClick={() => onSelectSection('callCancel')} className={itemClass('callCancel')}>
+                    <button onClick={() => handleItemClick('callCancel')} className={itemClass('callCancel')}>
                       Call Cancel
                     </button>
                   )}
                   {canAccess('callManagement', 'callFeedback') && (
-                    <button onClick={() => onSelectSection('callFeedback')} className={itemClass('callFeedback')}>
+                    <button onClick={() => handleItemClick('callFeedback')} className={itemClass('callFeedback')}>
                       Call FeedBack
                     </button>
                   )}
                   {canAccess('callManagement', 'callUpdate') && (
-                    <button onClick={() => onSelectSection('callUpdate')} className={itemClass('callUpdate')}>
+                    <button onClick={() => handleItemClick('callUpdate')} className={itemClass('callUpdate')}>
                       Call Update
                     </button>
                   )}
                   {canAccess('callManagement', 'callAllotment') && (
-                    <button onClick={() => onSelectSection('callAllotment')} className={itemClass('callAllotment')}>
+                    <button onClick={() => handleItemClick('callAllotment')} className={itemClass('callAllotment')}>
                       Call Allotment
                     </button>
                   )}
                   {canAccess('callManagement', 'jobsheetPrint') && (
-                    <button onClick={() => onSelectSection('jobsheetPrint')} className={itemClass('jobsheetPrint')}>
+                    <button onClick={() => handleItemClick('jobsheetPrint')} className={itemClass('jobsheetPrint')}>
                       Jobsheet Print
                     </button>
                   )}
                   {canAccess('callManagement', 'callAudit') && (
-                    <button onClick={() => onSelectSection('callAudit')} className={itemClass('callAudit')}>
+                    <button onClick={() => handleItemClick('callAudit')} className={itemClass('callAudit')}>
                       Call Audit
                     </button>
                   )}
@@ -415,7 +455,7 @@ export default function Sidebar({
               </button>
               {openMenus.masterData && (
                 <div className="bg-[#0b1320] py-1 border-t border-[#1e293b]/50">
-                  <button onClick={() => onSelectSection('download')} className={itemClass('download')}>
+                  <button onClick={() => handleItemClick('download')} className={itemClass('download')}>
                     Master Data Download
                   </button>
                 </div>
@@ -432,10 +472,10 @@ export default function Sidebar({
               </button>
               {openMenus.uploader && (
                 <div className="bg-[#0b1320] py-1 border-t border-[#1e293b]/50">
-                  <button onClick={() => onSelectSection('liveCallUpload')} className={itemClass('liveCallUpload')}>
+                  <button onClick={() => handleItemClick('liveCallUpload')} className={itemClass('liveCallUpload')}>
                     Live Call Upload
                   </button>
-                  <button onClick={() => onSelectSection('bulkExcelUpload')} className={itemClass('bulkExcelUpload')}>
+                  <button onClick={() => handleItemClick('bulkExcelUpload')} className={itemClass('bulkExcelUpload')}>
                     Bulk Excel Upload
                   </button>
                 </div>
@@ -452,7 +492,7 @@ export default function Sidebar({
               </button>
               {openMenus.reports && (
                 <div className="bg-[#0b1320] py-1 border-t border-[#1e293b]/50">
-                  <button onClick={() => onSelectSection('reportMain')} className={itemClass('reportMain')}>
+                  <button onClick={() => handleItemClick('reportMain')} className={itemClass('reportMain')}>
                     Report Main
                   </button>
                 </div>
@@ -469,10 +509,10 @@ export default function Sidebar({
               </button>
               {openMenus.users && (
                 <div className="bg-[#0b1320] py-1 border-t border-[#1e293b]/50">
-                  <button onClick={() => onSelectSection('createUser')} className={itemClass('createUser')}>
+                  <button onClick={() => handleItemClick('createUser')} className={itemClass('createUser')}>
                     Create User
                   </button>
-                  <button onClick={() => onSelectSection('updateUser')} className={itemClass('updateUser')}>
+                  <button onClick={() => handleItemClick('updateUser')} className={itemClass('updateUser')}>
                     Update User
                   </button>
                 </div>
@@ -489,15 +529,15 @@ export default function Sidebar({
               </button>
               {openMenus.utilities && (
                 <div className="bg-[#0b1320] py-1 border-t border-[#1e293b]/50">
-                  <button onClick={() => onSelectSection('adminUtility')} className={itemClass('adminUtility')}>
+                  <button onClick={() => handleItemClick('adminUtility')} className={itemClass('adminUtility')}>
                     Admin Utility
                   </button>
-                  <button onClick={() => onSelectSection('changePassword')} className={itemClass('changePassword')}>
+                  <button onClick={() => handleItemClick('changePassword')} className={itemClass('changePassword')}>
                     Change Password
                   </button>
                   {isSuperAdmin && (
                     <button
-                      onClick={() => onSelectSection('nomenclatureManagement')}
+                      onClick={() => handleItemClick('nomenclatureManagement')}
                       className={`${itemClass('nomenclatureManagement')} text-emerald-300 font-semibold`}
                     >
                       ⚙️ Nomenclature Management
@@ -515,5 +555,6 @@ export default function Sidebar({
         Authorized Personnel Only • Quickserves OS
       </div>
     </div>
-  );
+  </>
+);
 }

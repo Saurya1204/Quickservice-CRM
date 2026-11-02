@@ -419,12 +419,12 @@ export default function TechnicianMasterView({ currentUser }: { currentUser?: an
   });
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111c2e] p-5 rounded-2xl border border-[#24344d]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111c2e] p-4 sm:p-5 rounded-2xl border border-[#24344d]">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-white tracking-wide">Technician Master</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide">Technician Master</h1>
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               {filteredTechnicians.length} Technicians
             </span>
@@ -434,7 +434,7 @@ export default function TechnicianMasterView({ currentUser }: { currentUser?: an
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={handleOpenAdd}
             className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-blue-900/30 transition active:scale-95"

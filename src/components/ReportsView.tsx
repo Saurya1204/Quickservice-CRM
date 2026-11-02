@@ -189,8 +189,8 @@ export default function ReportsView() {
         </div>
 
         {/* SECTION 1: PENDING SECTION (2 Blue Buttons) */}
-        <div className="p-6 border-b border-[#334155]/60 bg-[#0f172a]/40 space-y-3">
-          <div className="flex items-center space-x-2">
+        <div className="p-4 sm:p-6 border-b border-[#334155]/60 bg-[#0f172a]/40 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs uppercase font-extrabold tracking-wider text-amber-400">
               1. Pending Section
             </span>
@@ -199,13 +199,13 @@ export default function ReportsView() {
             </span>
           </div>
 
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-2.5 sm:gap-4">
             {REPORT_DEFINITIONS.filter((r) => r.section === 'Pending').map((btn) => (
               <button
                 key={btn.key}
                 onClick={() => handleGenerateReport(btn.key)}
                 disabled={loading}
-                className={`text-xs font-bold px-6 py-3 rounded-lg shadow-md transition flex items-center space-x-2 ${
+                className={`text-xs font-bold px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg shadow-md transition flex items-center space-x-2 ${
                   activeReportKey === btn.key
                     ? 'bg-[#0056b3] text-white ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-900'
                     : 'bg-[#007bff] hover:bg-[#0069d9] text-white'
@@ -218,8 +218,8 @@ export default function ReportsView() {
         </div>
 
         {/* SECTION 2: OTHER SECTION (Date Filters + 10 Blue Buttons) */}
-        <div className="p-6 space-y-4">
-          <div className="flex items-center space-x-2">
+        <div className="p-4 sm:p-6 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs uppercase font-extrabold tracking-wider text-blue-400">
               2. Other Section
             </span>
@@ -229,30 +229,30 @@ export default function ReportsView() {
           </div>
 
           {/* Date Range Pickers: From & To */}
-          <div className="bg-[#172033] p-4 rounded-xl border border-[#334155] flex flex-wrap items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <label className="text-xs font-bold text-slate-300">From:</label>
+          <div className="bg-[#172033] p-3.5 sm:p-4 rounded-xl border border-[#334155] flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              <label className="text-xs font-bold text-slate-300 min-w-[40px]">From:</label>
               <input
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                className="bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 w-full sm:w-auto"
               />
             </div>
 
-            <div className="flex items-center space-x-2">
-              <label className="text-xs font-bold text-slate-300">To:</label>
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              <label className="text-xs font-bold text-slate-300 min-w-[40px]">To:</label>
               <input
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                className="bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 w-full sm:w-auto"
               />
             </div>
 
             <button
               onClick={handleResetFilters}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg border border-slate-700 transition"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3.5 py-2 rounded-lg border border-slate-700 transition w-full sm:w-auto"
             >
               Clear / Reset Filter
             </button>

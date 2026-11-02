@@ -59,6 +59,7 @@ export default function Home() {
   const [currentSection, setCurrentSection] = useState('dashboard');
   const [checkedAuth, setCheckedAuth] = useState(false);
   const [visitedSections, setVisitedSections] = useState<Set<string>>(() => new Set(['dashboard']));
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setVisitedSections((prev) => {
@@ -144,18 +145,54 @@ export default function Home() {
   }
 
   return (
-    <div className="flex w-full min-h-screen bg-[#0f172a] text-[#f8fafc]">
-      {/* Sidebar Navigation with Dynamic RBAC */}
+    <div className="flex w-full min-h-screen bg-[#0f172a] text-[#f8fafc] overflow-x-hidden">
+      {/* Sidebar Navigation with Dynamic RBAC & Mobile Slide-In Drawer */}
       <Sidebar
         currentSection={currentSection}
         onSelectSection={(sec) => setCurrentSection(sec)}
         onLogout={handleLogout}
         currentUser={user}
+        isOpenMobile={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
       {/* Main Content Area */}
-      <div className="ml-64 flex-1 min-w-0 p-8 space-y-6">
-        <Header user={user} />
+      <div className="flex-1 min-w-0 md:ml-64 flex flex-col min-h-screen max-w-full">
+        {/* Mobile Sticky Header Bar */}
+        <header className="md:hidden sticky top-0 z-30 flex items-center justify-between px-3.5 py-2.5 bg-[#111c2e] border-b border-[#1e293b] shadow-md">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 rounded-xl bg-slate-800 text-slate-200 hover:text-white hover:bg-slate-700 active:bg-slate-600 transition min-w-[40px] min-h-[40px] flex items-center justify-center cursor-pointer"
+              aria-label="Open Navigation Drawer"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <img
+              src="/assets/quickserves-logo.png"
+              alt="Quickserves Official Logo"
+              className="h-6 w-auto max-w-[130px] object-contain select-none"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-semibold">
+              {user?.role || 'Admin'}
+            </span>
+            <button
+              onClick={handleLogout}
+              title="Logout"
+              className="text-[11px] text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded border border-rose-500/20 font-medium transition cursor-pointer"
+            >
+              Exit
+            </button>
+          </div>
+        </header>
+
+        {/* Dynamic Section Content */}
+        <main className="flex-1 p-3 sm:p-5 md:p-8 space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
+          <Header user={user} onOpenMobileMenu={() => setMobileMenuOpen(true)} />
 
 
         {/* 1. Dynamic Role-Based Dashboard */}
@@ -359,6 +396,7 @@ export default function Home() {
             <NomenclatureManagementView currentUser={user} />
           </div>
         )}
+        </main>
       </div>
     </div>
   );

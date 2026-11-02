@@ -601,13 +601,13 @@ export default function UserManagementView({ initialMode = 'createUser', current
             <p className="text-xs text-slate-400">Manage user status, inspect assigned roles & scopes</p>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <input
               type="text"
               placeholder="Search user, name, role..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-[#172033] border border-[#334155] text-xs px-3 py-1.5 rounded-lg text-white focus:outline-none focus:border-emerald-500 w-48"
+              className="bg-[#172033] border border-[#334155] text-xs px-3 py-1.5 rounded-lg text-white focus:outline-none focus:border-emerald-500 flex-1 sm:w-48"
             />
             <select
               value={filterRole}

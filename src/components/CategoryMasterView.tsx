@@ -444,12 +444,12 @@ export default function CategoryMasterView({ currentUser }: CategoryMasterViewPr
   });
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111c2e] p-5 rounded-2xl border border-[#24344d]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111c2e] p-4 sm:p-5 rounded-2xl border border-[#24344d]">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-white tracking-wide">Product Category Master</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide">Product Category Master</h1>
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
               {allCategories.length} Categories Configured
             </span>
@@ -460,7 +460,7 @@ export default function CategoryMasterView({ currentUser }: CategoryMasterViewPr
         </div>
 
         {/* Action Buttons depending on Active Tab */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           {activeTab === 'categories' ? (
             <button
               onClick={handleOpenAddCategory}
