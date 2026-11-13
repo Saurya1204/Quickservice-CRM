@@ -12,6 +12,7 @@ export interface IVendorDocument extends Document {
   fileUrl: string;
   fileSize: number;
   mimeType: string;
+  fileData?: string;
   uploadedBy?: string;
   uploadedAt: Date;
   status: 'Active' | 'Inactive';
@@ -37,6 +38,7 @@ const VendorDocumentSchema = new Schema<IVendorDocument>(
     fileUrl: { type: String, required: true },
     fileSize: { type: Number, default: 0 },
     mimeType: { type: String, default: 'application/octet-stream' },
+    fileData: { type: String, select: false },
     uploadedBy: { type: String, default: 'Super Admin' },
     uploadedAt: { type: Date, default: Date.now },
     status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },

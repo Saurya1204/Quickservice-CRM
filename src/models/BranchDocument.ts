@@ -14,6 +14,8 @@ export interface IBranchDocument extends Document {
   fileUrl: string;
   fileSize: number;
   fileType: string;
+  mimeType?: string;
+  fileData?: string;
   uploadedBy: string;
   status: 'ACTIVE' | 'ARCHIVED';
   createdAt: Date;
@@ -39,6 +41,8 @@ const BranchDocumentSchema = new Schema<IBranchDocument>(
     fileUrl: { type: String, required: true },
     fileSize: { type: Number, default: 0 },
     fileType: { type: String, default: '' },
+    mimeType: { type: String, default: 'application/octet-stream' },
+    fileData: { type: String, select: false },
     uploadedBy: { type: String, default: 'Admin' },
     status: { type: String, enum: ['ACTIVE', 'ARCHIVED'], default: 'ACTIVE' },
   },

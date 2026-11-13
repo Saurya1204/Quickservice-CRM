@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { MasterDocument } from '@/models/MasterDocument';
 import { BranchDocument } from '@/models/BranchDocument';
@@ -107,18 +108,23 @@ export async function POST(req: Request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64Data = buffer.toString('base64');
+    const docId = new mongoose.Types.ObjectId();
+    const fileUrl = `/api/masters/documents/serve?id=${docId.toString()}&entity=master`;
 
-    // Save to public/uploads/master-docs
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'master-docs');
-    await mkdir(uploadDir, { recursive: true });
-
-    const safeFilename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-    const filePath = path.join(uploadDir, safeFilename);
-    await writeFile(filePath, buffer);
-
-    const fileUrl = `/uploads/master-docs/${safeFilename}`;
+    // Attempt local filesystem write as convenience if writable, ignore EROFS in serverless (Vercel)
+    try {
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'master-docs');
+      await mkdir(uploadDir, { recursive: true });
+      const safeFilename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const filePath = path.join(uploadDir, safeFilename);
+      await writeFile(filePath, buffer);
+    } catch (fsErr) {
+      // Expected in serverless environments like Vercel (read-only filesystem)
+    }
 
     const newDoc = await MasterDocument.create({
+      _id: docId,
       masterType: masterType.toLowerCase(),
       entityId,
       entityName,
@@ -128,6 +134,7 @@ export async function POST(req: Request) {
       fileUrl,
       fileSize: file.size,
       fileType: file.type || ext,
+      fileData: base64Data,
       uploadedBy,
       status: 'ACTIVE',
     });

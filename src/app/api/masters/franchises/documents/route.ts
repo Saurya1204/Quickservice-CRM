@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { FranchiseDocument, FRANCHISE_DOCUMENT_TYPES } from '@/models/FranchiseDocument';
 import { Franchise } from '@/models/Franchise';
@@ -89,18 +90,24 @@ export async function POST(req: Request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64Data = buffer.toString('base64');
 
-    // Save to public/uploads/franchise-docs
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'franchise-docs');
-    await mkdir(uploadDir, { recursive: true });
+    const docId = new mongoose.Types.ObjectId();
+    const fileUrl = `/api/masters/documents/serve?id=${docId.toString()}&entity=franchise`;
 
-    const safeFilename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-    const filePath = path.join(uploadDir, safeFilename);
-    await writeFile(filePath, buffer);
-
-    const fileUrl = `/uploads/franchise-docs/${safeFilename}`;
+    // Save to public/uploads/franchise-docs if writable, ignore EROFS in serverless (Vercel)
+    try {
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'franchise-docs');
+      await mkdir(uploadDir, { recursive: true });
+      const safeFilename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const filePath = path.join(uploadDir, safeFilename);
+      await writeFile(filePath, buffer);
+    } catch (fsErr) {
+      // Expected in serverless environments like Vercel (read-only filesystem)
+    }
 
     const newDoc = await FranchiseDocument.create({
+      _id: docId,
       franchiseId: franchise._id,
       franchiseCRMCode: franchise.crmCode,
       franchiseName: franchise.firmName,
@@ -109,6 +116,7 @@ export async function POST(req: Request) {
       fileUrl,
       fileSize: file.size,
       mimeType: file.type || ext,
+      fileData: base64Data,
       uploadedBy,
       uploadedAt: new Date(),
       status: 'ACTIVE',

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { BranchDocument } from '@/models/BranchDocument';
 import { Branch } from '@/models/Branch';
@@ -76,18 +77,24 @@ export async function POST(req: Request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64Data = buffer.toString('base64');
 
-    // Save to public/uploads/branch-docs
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'branch-docs');
-    await mkdir(uploadDir, { recursive: true });
+    const docId = new mongoose.Types.ObjectId();
+    const fileUrl = `/api/masters/documents/serve?id=${docId.toString()}&entity=branch`;
 
-    const safeFilename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-    const filePath = path.join(uploadDir, safeFilename);
-    await writeFile(filePath, buffer);
-
-    const fileUrl = `/uploads/branch-docs/${safeFilename}`;
+    // Save to public/uploads/branch-docs if writable, ignore EROFS in serverless (Vercel)
+    try {
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'branch-docs');
+      await mkdir(uploadDir, { recursive: true });
+      const safeFilename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const filePath = path.join(uploadDir, safeFilename);
+      await writeFile(filePath, buffer);
+    } catch (fsErr) {
+      // Expected in serverless environments like Vercel (read-only filesystem)
+    }
 
     const newDoc = await BranchDocument.create({
+      _id: docId,
       branchId: branch._id,
       branchName: branch.branchName,
       crmCode: branch.crmCode,
@@ -96,6 +103,8 @@ export async function POST(req: Request) {
       fileUrl,
       fileSize: file.size,
       fileType: file.type || ext,
+      mimeType: file.type || ext,
+      fileData: base64Data,
       uploadedBy,
       status: 'ACTIVE',
     });

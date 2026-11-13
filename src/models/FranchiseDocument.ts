@@ -24,6 +24,7 @@ export interface IFranchiseDocument extends Document {
   fileUrl: string;
   fileSize: number;
   mimeType: string;
+  fileData?: string;
   uploadedBy: string;
   uploadedAt: Date;
   status: 'ACTIVE' | 'ARCHIVED';
@@ -45,6 +46,7 @@ const FranchiseDocumentSchema = new Schema<IFranchiseDocument>(
     fileUrl: { type: String, required: true },
     fileSize: { type: Number, default: 0 },
     mimeType: { type: String, default: '' },
+    fileData: { type: String, select: false },
     uploadedBy: { type: String, default: 'Super Admin' },
     uploadedAt: { type: Date, default: Date.now },
     status: { type: String, enum: ['ACTIVE', 'ARCHIVED'], default: 'ACTIVE' },

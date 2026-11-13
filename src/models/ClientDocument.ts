@@ -18,6 +18,7 @@ export interface IClientDocument extends Document {
   fileUrl: string;
   fileSize: number;
   mimeType: string;
+  fileData?: string;
   uploadedBy: string;
   uploadedAt: Date;
   status: 'ACTIVE' | 'ARCHIVED' | 'DELETED';
@@ -64,6 +65,10 @@ const ClientDocumentSchema = new Schema<IClientDocument>(
     mimeType: {
       type: String,
       default: 'application/octet-stream',
+    },
+    fileData: {
+      type: String,
+      select: false,
     },
     uploadedBy: {
       type: String,

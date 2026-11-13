@@ -11,6 +11,7 @@ export interface IMasterDocument extends Document {
   fileUrl: string;
   fileSize: number;
   fileType: string;
+  fileData?: string;
   uploadedBy: string;
   status: 'ACTIVE' | 'ARCHIVED';
   createdAt: Date;
@@ -29,6 +30,7 @@ const MasterDocumentSchema = new Schema<IMasterDocument>(
     fileUrl: { type: String, required: true },
     fileSize: { type: Number, default: 0 },
     fileType: { type: String, default: '' },
+    fileData: { type: String, select: false },
     uploadedBy: { type: String, default: 'Admin' },
     status: { type: String, enum: ['ACTIVE', 'ARCHIVED'], default: 'ACTIVE' },
   },

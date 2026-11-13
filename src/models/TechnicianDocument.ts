@@ -21,6 +21,7 @@ export interface ITechnicianDocument extends Document {
   fileUrl: string;
   fileSize: number;
   mimeType: string;
+  fileData?: string;
   uploadedBy: string;
   uploadedAt: Date;
   status: 'ACTIVE' | 'ARCHIVED' | 'DELETED';
@@ -67,6 +68,10 @@ const TechnicianDocumentSchema = new Schema<ITechnicianDocument>(
     mimeType: {
       type: String,
       default: 'application/octet-stream',
+    },
+    fileData: {
+      type: String,
+      select: false,
     },
     uploadedBy: {
       type: String,

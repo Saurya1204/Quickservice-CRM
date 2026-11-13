@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { VendorDocument } from '@/models/VendorDocument';
 import { Vendor } from '@/models/Vendor';
 import { AuditLog } from '@/models/AuditLog';
-import { writeFile, unlink } from 'fs/promises';
+import { writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
 
 export const dynamic = 'force-dynamic';
@@ -71,15 +72,24 @@ export async function POST(req: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const uniqueFileName = `${Date.now()}_${sanitizedFileName}`;
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'vendor-docs');
-    const filePath = path.join(uploadDir, uniqueFileName);
+    const base64Data = buffer.toString('base64');
+    const docId = new mongoose.Types.ObjectId();
+    const fileUrl = `/api/masters/documents/serve?id=${docId.toString()}&entity=vendor`;
 
-    await writeFile(filePath, buffer);
-    const fileUrl = `/uploads/vendor-docs/${uniqueFileName}`;
+    // Attempt local filesystem write as convenience if writable, ignore EROFS in serverless (Vercel)
+    try {
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const uniqueFileName = `${Date.now()}_${sanitizedFileName}`;
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'vendor-docs');
+      await mkdir(uploadDir, { recursive: true });
+      const filePath = path.join(uploadDir, uniqueFileName);
+      await writeFile(filePath, buffer);
+    } catch (fsErr) {
+      // Expected in serverless environments like Vercel (read-only filesystem)
+    }
 
     const newDoc = await VendorDocument.create({
+      _id: docId,
       vendorId: vendor._id,
       vendorName: vendor.vendorName,
       documentType,
@@ -87,6 +97,7 @@ export async function POST(req: Request) {
       fileUrl,
       fileSize: file.size,
       mimeType: file.type,
+      fileData: base64Data,
       uploadedBy: 'Super Admin',
       uploadedAt: new Date(),
       status: 'Active',
