@@ -13,11 +13,45 @@ export async function GET(req: Request) {
     const zone = searchParams.get('zone');
     const branch = searchParams.get('branch');
     const city = searchParams.get('city');
+    const clientId = searchParams.get('clientId');
+    const clientName = searchParams.get('clientName');
+    const brand = searchParams.get('brand');
+    const franchise = searchParams.get('franchise');
+    const technician = searchParams.get('technician');
 
     const callFilter: any = {};
     const branchFilter: any = { status: 'A' };
     const techFilter: any = { status: 'A' };
 
+    // Client Scoping (for Client Admin & Client User)
+    if (clientId || clientName) {
+      if (clientId && clientName) {
+        callFilter.$or = [{ clientId: clientId }, { clientName: { $regex: new RegExp(clientName, 'i') } }];
+      } else if (clientId) {
+        callFilter.clientId = clientId;
+      } else if (clientName) {
+        callFilter.clientName = { $regex: new RegExp(clientName, 'i') };
+      }
+    }
+
+    if (brand && brand.trim() && brand !== 'All') {
+      callFilter.brandName = { $regex: new RegExp(brand.trim(), 'i') };
+    }
+
+    // Franchise Scoping
+    if (franchise && franchise.trim() && franchise !== 'All') {
+      callFilter.$or = [
+        { ascName: { $regex: new RegExp(franchise.trim(), 'i') } },
+        { serviceProviderName: { $regex: new RegExp(franchise.trim(), 'i') } },
+      ];
+    }
+
+    // Technician Scoping
+    if (technician && technician.trim() && technician !== 'All') {
+      callFilter.technicianName = { $regex: new RegExp(technician.trim(), 'i') };
+    }
+
+    // Branch & Geographic Scoping
     if (branch && branch !== 'All' && branch.trim()) {
       callFilter.branch = branch;
       branchFilter.branchName = branch;

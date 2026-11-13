@@ -209,6 +209,62 @@ export const PREDEFINED_ROLES = [
     description: 'Call Coordinator: Customer call intake, appointment scheduling, call update & customer feedback',
     isSystem: false,
   },
+  {
+    name: 'Client Admin',
+    code: 'CLIENT_ADMIN',
+    hierarchyLevel: 3,
+    reportingTo: 'ADMIN',
+    description: 'Enterprise Client Administrator: Full operational visibility over assigned client brands, complaints & SLA reports',
+    isSystem: false,
+  },
+  {
+    name: 'Client User',
+    code: 'CLIENT_USER',
+    hierarchyLevel: 4,
+    reportingTo: 'CLIENT_ADMIN',
+    description: 'Client Executive: Real-time service tracking and complaint monitoring for assigned client',
+    isSystem: false,
+  },
+  {
+    name: 'Branch Manager',
+    code: 'BRANCH_MANAGER',
+    hierarchyLevel: 5,
+    reportingTo: 'ZSM',
+    description: 'Branch Service Manager: Oversees local branch service operations, technicians, allotment and complaints',
+    isSystem: false,
+  },
+  {
+    name: 'Zone Manager',
+    code: 'ZONE_MANAGER',
+    hierarchyLevel: 4,
+    reportingTo: 'HOD',
+    description: 'Zonal Service Manager: Regional service network oversight and regional performance monitoring',
+    isSystem: false,
+  },
+  {
+    name: 'Franchise Manager',
+    code: 'FRANCHISE_MANAGER',
+    hierarchyLevel: 6,
+    reportingTo: 'BRANCH_MANAGER',
+    description: 'Authorized Service Centre (ASC) Franchise Manager: Franchise technician tracking & complaint execution',
+    isSystem: false,
+  },
+  {
+    name: 'Technician / Engineer',
+    code: 'TECHNICIAN',
+    hierarchyLevel: 7,
+    reportingTo: 'BRANCH_MANAGER',
+    description: 'Field Service Engineer: Service visit execution, Job Sheet updates, appliance diagnostics and appointments',
+    isSystem: false,
+  },
+  {
+    name: 'Call Centre Executive',
+    code: 'CALL_CENTRE_EXECUTIVE',
+    hierarchyLevel: 7,
+    reportingTo: 'ADMIN',
+    description: 'Call Centre Agent: Customer complaint intake, telephone follow-ups and service feedback collection',
+    isSystem: false,
+  },
 ];
 
 export function generateDefaultPermissions(roleCode: string): IModulePermission[] {
@@ -395,6 +451,145 @@ export function generateDefaultPermissions(roleCode: string): IModulePermission[
           accessLevel = 'READ_ONLY';
           actions.read = true;
           subSections.viewBranchMaster = true;
+        }
+        break;
+
+      case 'CLIENT_ADMIN':
+        if (mod.key === 'dashboard') {
+          accessLevel = 'FULL';
+          actions.read = true;
+          actions.export = true;
+        } else if (mod.key === 'callManagement') {
+          accessLevel = 'FULL';
+          actions.read = true;
+          actions.create = true;
+          actions.update = true;
+          actions.export = true;
+          subSections.callRegistration = true;
+          subSections.callView = true;
+          subSections.callFeedback = true;
+          subSections.callAudit = true;
+        } else if (mod.key === 'reports') {
+          accessLevel = 'RESTRICTED';
+          actions.read = true;
+          actions.export = true;
+          subSections.dashboardReports = true;
+          subSections.operationalReports = true;
+        }
+        break;
+
+      case 'CLIENT_USER':
+        if (mod.key === 'dashboard') {
+          accessLevel = 'READ_ONLY';
+          actions.read = true;
+        } else if (mod.key === 'callManagement') {
+          accessLevel = 'RESTRICTED';
+          actions.read = true;
+          actions.create = true;
+          subSections.callRegistration = true;
+          subSections.callView = true;
+          subSections.callFeedback = true;
+        } else if (mod.key === 'reports') {
+          accessLevel = 'READ_ONLY';
+          actions.read = true;
+          subSections.operationalReports = true;
+        }
+        break;
+
+      case 'BRANCH_MANAGER':
+        if (mod.key === 'dashboard') {
+          accessLevel = 'FULL';
+          actions.read = true;
+        } else if (mod.key === 'callManagement') {
+          accessLevel = 'FULL';
+          actions.read = true;
+          actions.update = true;
+          actions.create = true;
+          actions.reopenCall = true;
+          actions.export = true;
+          if (mod.subSections) {
+            mod.subSections.forEach((sub) => (subSections[sub.key] = true));
+          }
+        } else if (mod.key === 'technicianMaster' || mod.key === 'branchMaster') {
+          accessLevel = 'READ_ONLY';
+          actions.read = true;
+        } else if (mod.key === 'reports') {
+          accessLevel = 'RESTRICTED';
+          actions.read = true;
+          subSections.branchReports = true;
+          subSections.operationalReports = true;
+        }
+        break;
+
+      case 'ZONE_MANAGER':
+        if (['dashboard', 'branchMaster', 'franchiseMaster', 'technicianMaster', 'callManagement', 'reports'].includes(mod.key)) {
+          accessLevel = 'RESTRICTED';
+          actions.read = true;
+          actions.update = true;
+          actions.export = true;
+          if (mod.subSections) {
+            mod.subSections.forEach((sub) => {
+              if (!['financialReports', 'employeeReports'].includes(sub.key)) {
+                subSections[sub.key] = true;
+              }
+            });
+          }
+        }
+        break;
+
+      case 'FRANCHISE_MANAGER':
+        if (mod.key === 'dashboard') {
+          accessLevel = 'FULL';
+          actions.read = true;
+        } else if (mod.key === 'callManagement') {
+          accessLevel = 'RESTRICTED';
+          actions.read = true;
+          actions.update = true;
+          subSections.callView = true;
+          subSections.callUpdate = true;
+          subSections.callAllotment = true;
+          subSections.callAppointment = true;
+          subSections.jobsheetPrint = true;
+          subSections.callFeedback = true;
+        } else if (mod.key === 'technicianMaster') {
+          accessLevel = 'READ_ONLY';
+          actions.read = true;
+        }
+        break;
+
+      case 'TECHNICIAN':
+        if (mod.key === 'dashboard') {
+          accessLevel = 'READ_ONLY';
+          actions.read = true;
+        } else if (mod.key === 'callManagement') {
+          accessLevel = 'RESTRICTED';
+          actions.read = true;
+          actions.update = true;
+          subSections.callView = true;
+          subSections.callUpdate = true;
+          subSections.callAppointment = true;
+          subSections.callReschedule = true;
+          subSections.jobsheetPrint = true;
+        }
+        break;
+
+      case 'CALL_CENTRE_EXECUTIVE':
+        if (mod.key === 'dashboard') {
+          accessLevel = 'READ_ONLY';
+          actions.read = true;
+        } else if (mod.key === 'callManagement') {
+          accessLevel = 'RESTRICTED';
+          actions.create = true;
+          actions.read = true;
+          actions.update = true;
+          subSections.callRegistration = true;
+          subSections.callView = true;
+          subSections.callEdit = true;
+          subSections.callAppointment = true;
+          subSections.callReschedule = true;
+          subSections.callFeedback = true;
+          subSections.callUpdate = true;
+          subSections.callAllotment = true;
         }
         break;
     }

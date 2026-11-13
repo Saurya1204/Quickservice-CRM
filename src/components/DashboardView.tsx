@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { fetchWithCache, invalidateCache, getCachedData } from '@/lib/clientCache';
+import { fetchWithCache, invalidateCache } from '@/lib/clientCache';
 
 interface DashboardViewProps {
   currentUser?: any;
@@ -9,17 +9,17 @@ interface DashboardViewProps {
 
 export default function DashboardView({ currentUser }: DashboardViewProps) {
   const [stats, setStats] = useState<any>({
-    openCalls: 3,
+    openCalls: 0,
     appointmentCalls: 0,
-    allotedCalls: 171,
-    partPendingCalls: 14,
-    completedCalls: 1280,
-    cancelCalls: 22,
-    reopenedCalls: 3,
-    criticalPendingCalls: 151,
-    activeBranches: 12,
-    activeFranchises: 48,
-    activeTechnicians: 320,
+    allotedCalls: 0,
+    partPendingCalls: 0,
+    completedCalls: 0,
+    cancelCalls: 0,
+    reopenedCalls: 0,
+    criticalPendingCalls: 0,
+    activeBranches: 0,
+    activeFranchises: 0,
+    activeTechnicians: 0,
     sparesValuation: '₹ 42.5 L',
   });
 
@@ -30,22 +30,32 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
   const [editTechnician, setEditTechnician] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // Determine user role and scope
+  // Determine user role and organizational scope
   const roleCode = (currentUser?.roleCode || currentUser?.role || 'SUPER_ADMIN')
     .toUpperCase()
     .replace(/\s+/g, '_');
   const userRoleName = currentUser?.role || 'Super Admin';
-  const assignedZone = currentUser?.assignedZone || '';
-  const assignedBranch = currentUser?.assignedBranch || '';
+
+  const organizationalScope = currentUser?.organizationalScope || 'NATIONAL';
+  const clientId = currentUser?.clientId || '';
+  const clientName = currentUser?.clientName || '';
+  const brandName = currentUser?.brandName || '';
+  const assignedBrands = Array.isArray(currentUser?.assignedBrands) ? currentUser.assignedBrands : [];
+  const franchiseName = currentUser?.franchiseName || '';
+  const technicianName = currentUser?.technicianName || '';
+  const assignedZone = currentUser?.zoneName || currentUser?.assignedZone || '';
+  const assignedBranch = currentUser?.branchName || currentUser?.assignedBranch || '';
   const assignedArea = currentUser?.assignedArea || '';
 
   const isSuperAdmin = roleCode === 'SUPER_ADMIN' || userRoleName === 'Super Admin';
   const isAdmin = roleCode === 'ADMIN' || userRoleName === 'Admin';
+  const isClientUser = roleCode.includes('CLIENT') || userRoleName.includes('Client');
+  const isBranchUser = roleCode.includes('BRANCH') || roleCode === 'BSM';
+  const isZoneUser = roleCode.includes('ZONE') || roleCode === 'ZSM';
+  const isFranchiseUser = roleCode.includes('FRANCHISE') || userRoleName.includes('Franchise');
+  const isTechnician = roleCode.includes('TECH') || roleCode.includes('ENGINEER') || userRoleName.includes('Technician');
   const isHOD = roleCode === 'HOD';
-  const isZSM = roleCode === 'ZSM';
-  const isBSM = roleCode === 'BSM' || roleCode === 'BRANCH_MANAGER';
-  const isASM = roleCode === 'ASM';
-  const isCCO = roleCode === 'CCO';
+  const isCCO = roleCode === 'CCO' || roleCode === 'CALL_CENTRE_EXECUTIVE';
 
   useEffect(() => {
     fetchDashboard();
@@ -55,8 +65,15 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
     try {
       const params = new URLSearchParams();
       if (roleCode) params.set('role', roleCode);
-      if (assignedZone) params.set('zone', assignedZone);
+
+      // Scoping
+      if (clientId) params.set('clientId', clientId);
+      if (clientName) params.set('clientName', clientName);
+      if (brandName) params.set('brand', brandName);
+      if (franchiseName) params.set('franchise', franchiseName);
+      if (technicianName) params.set('technician', technicianName);
       if (assignedBranch) params.set('branch', assignedBranch);
+      if (assignedZone) params.set('zone', assignedZone);
       if (assignedArea) params.set('city', assignedArea);
 
       const [statsJson, callsJson] = await Promise.all([
@@ -67,7 +84,7 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
       if (statsJson && statsJson.success) {
         setStats(statsJson.stats);
       }
-      if (callsJson && callsJson.success) {
+      if (callsJson && callsJson.success && Array.isArray(callsJson.data)) {
         setRecentCalls(callsJson.data);
       }
     } catch (e) {
@@ -118,40 +135,61 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
       <div className="bg-[#1e293b] border border-[#334155] p-5 rounded-xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-lg font-bold text-white">
-              {isSuperAdmin && '👑 Super Admin Master Analytics Center'}
-              {isAdmin && '🏢 Operations Administration Dashboard'}
-              {isHOD && '📊 Department Operational & SLA Performance'}
-              {isZSM && `🌐 Zonal Management Dashboard ${assignedZone ? `(${assignedZone} Zone)` : ''}`}
-              {isBSM && `📍 Branch Service Center ${assignedBranch ? `(${assignedBranch})` : ''}`}
-              {isASM && `🗺️ Area Operations Hub ${assignedArea ? `(${assignedArea})` : ''}`}
-              {isCCO && '📞 Call Coordination & Intake Center'}
-              {!isSuperAdmin && !isAdmin && !isHOD && !isZSM && !isBSM && !isASM && !isCCO && `${userRoleName} Dashboard`}
+            <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+              {isSuperAdmin && <span>👑 Super Admin Master Analytics Center</span>}
+              {isAdmin && <span>🏢 Operations Administration Dashboard</span>}
+              {isClientUser && <span>🏢 {clientName || 'Client'} Enterprise Service Portal</span>}
+              {isBranchUser && <span>📍 Branch Service Center {assignedBranch ? `(${assignedBranch})` : ''}</span>}
+              {isZoneUser && <span>🌐 Zonal Management Dashboard {assignedZone ? `(${assignedZone} Zone)` : ''}</span>}
+              {isFranchiseUser && <span>🏪 Franchise Partner Dashboard {franchiseName ? `(${franchiseName})` : ''}</span>}
+              {isTechnician && <span>👷 Field Service Engineer Hub ({technicianName || currentUser?.fullName})</span>}
+              {isHOD && <span>📊 Department Operational & SLA Performance</span>}
+              {isCCO && <span>📞 Call Coordination & Intake Center</span>}
+              {!isSuperAdmin && !isAdmin && !isClientUser && !isBranchUser && !isZoneUser && !isFranchiseUser && !isTechnician && !isHOD && !isCCO && (
+                <span>{userRoleName} Dashboard</span>
+              )}
             </h2>
             <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono">
               Live Real-Time
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            Personalized metrics & real-time operational feeds for {currentUser?.fullName || 'User'} ({userRoleName})
+            {isClientUser
+              ? `Operational metrics and service tickets for ${clientName || 'your enterprise'} • Scope: Client Restricted`
+              : `Personalized metrics & real-time operational feeds for ${currentUser?.fullName || 'User'} (${userRoleName})`}
           </p>
         </div>
 
         {/* Scope Indicators */}
         <div className="flex flex-wrap gap-2 text-xs">
-          {assignedZone && (
+          {clientName && (
+            <span className="bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-2.5 py-1 rounded-lg font-semibold">
+              Client: <strong>{clientName}</strong>
+            </span>
+          )}
+          {brandName && (
+            <span className="bg-cyan-500/10 text-cyan-200 border border-cyan-500/20 px-2.5 py-1 rounded-lg">
+              Brand: <strong>{brandName}</strong>
+            </span>
+          )}
+          {assignedZone && !clientName && (
             <span className="bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2.5 py-1 rounded-lg">
               Zone: <strong>{assignedZone}</strong>
             </span>
           )}
-          {assignedBranch && (
+          {assignedBranch && !clientName && (
             <span className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
               Branch: <strong>{assignedBranch}</strong>
             </span>
           )}
-          {assignedArea && (
-            <span className="bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2.5 py-1 rounded-lg">
-              Area: <strong>{assignedArea}</strong>
+          {franchiseName && (
+            <span className="bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-lg">
+              Franchise: <strong>{franchiseName}</strong>
+            </span>
+          )}
+          {technicianName && (
+            <span className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+              Tech: <strong>{technicianName}</strong>
             </span>
           )}
         </div>
@@ -160,7 +198,7 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
       {/* SERVICE & CALL OPERATIONS WIDGETS */}
       <div>
         <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-          Service Request Lifecycle & Call Operations
+          {isClientUser ? 'Client Service Complaint Overview' : 'Service Request Lifecycle & Call Operations'}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-[#1e293b] border border-[#334155] p-4 rounded-xl border-l-4 border-l-blue-500 shadow-lg">
@@ -209,8 +247,8 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
         </div>
       </div>
 
-      {/* SYSTEM, NETWORK & CAPACITY OVERVIEW (FOR ADMIN, SUPER ADMIN, HOD, ZSM, BSM) */}
-      {(isSuperAdmin || isAdmin || isHOD || isZSM || isBSM) && (
+      {/* INTERNAL INFRASTRUCTURE & CAPACITY OVERVIEW (ONLY VISIBLE TO SUPER ADMIN, ADMIN, HOD, ZONE, BRANCH) */}
+      {(isSuperAdmin || isAdmin || isHOD || isZoneUser || isBranchUser) && !isClientUser && (
         <div>
           <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
             Infrastructure, Network & Resource Capacity
@@ -224,13 +262,13 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
 
             <div className="bg-[#1e293b] border border-[#334155] p-4 rounded-xl border-l-4 border-l-blue-400 shadow-lg">
               <p className="text-slate-400 text-xs font-medium">
-                {isBSM ? 'BRANCH STATUS' : 'ACTIVE BRANCH HUBS'}
+                {isBranchUser ? 'BRANCH STATUS' : 'ACTIVE BRANCH HUBS'}
               </p>
               <h3 className="text-2xl font-bold text-white mt-1">
-                {isBSM ? 'Operational' : stats.activeBranches}
+                {isBranchUser ? 'Operational' : stats.activeBranches}
               </h3>
               <span className="text-xs text-blue-400 mt-2 inline-block">
-                {isBSM ? assignedBranch || 'Assigned Branch' : 'Regional primary nodes'}
+                {isBranchUser ? assignedBranch || 'Assigned Branch' : 'Regional primary nodes'}
               </span>
             </div>
 
@@ -253,101 +291,111 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
       <div className="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-xl space-y-4">
         <div className="flex justify-between items-center border-b border-[#334155] pb-3">
           <div>
-            <h3 className="text-sm font-bold text-white">Live Service Request Activity Feed</h3>
-            <p className="text-xs text-slate-400">Scoped to your organizational authorization & geography</p>
+            <h3 className="text-sm font-bold text-white">
+              {isClientUser ? `${clientName} Service Requests Feed` : 'Live Service Request Activity Feed'}
+            </h3>
+            <p className="text-xs text-slate-400">
+              {isClientUser
+                ? `Authorized tickets registered under client ${clientName || ''}`
+                : 'Scoped to your organizational authorization & geography'}
+            </p>
           </div>
           <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-[#334155] font-mono">
             {recentCalls.length} Requests Found
           </span>
         </div>
 
-        {loading ? (
-          <div className="p-8 text-center text-slate-400 text-xs">Loading activity feed...</div>
-        ) : recentCalls.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 text-xs">No active service requests in your scope.</div>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-[#334155]">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-[#172033] text-slate-400 uppercase text-[10px] tracking-wider border-b border-[#334155]">
+        <div className="overflow-x-auto custom-horizontal-scrollbar">
+          {loading ? (
+            <div className="p-8 text-center text-slate-400 text-xs">Loading activity feed...</div>
+          ) : recentCalls.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs">
+              No service calls recorded for this organizational scope.
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs text-slate-300 min-w-[900px]">
+              <thead className="bg-[#111c2e] text-slate-400 uppercase text-[10px] tracking-wider border-b border-[#334155]">
                 <tr>
                   <th className="p-3">Call No</th>
                   <th className="p-3">Customer</th>
                   <th className="p-3">City</th>
-                  <th className="p-3">Product</th>
-                  <th className="p-3">Fault</th>
-                  <th className="p-3">Technician</th>
+                  <th className="p-3">Product / Brand</th>
                   <th className="p-3">Status</th>
-                  <th className="p-3 text-right">Quick Action</th>
+                  <th className="p-3">Technician</th>
+                  {!isClientUser && <th className="p-3 text-right">Action</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#334155]/60">
-                {recentCalls.slice(0, 10).map((c) => (
-                  <tr key={c._id} className="hover:bg-[#1e2a3e]/50 transition">
-                    <td className="p-3 font-mono text-emerald-400 font-semibold">{c.callNo}</td>
+              <tbody className="divide-y divide-[#334155]/60 bg-[#1e293b]">
+                {recentCalls.slice(0, 15).map((call) => (
+                  <tr key={call._id} className="hover:bg-slate-800/40 transition">
+                    <td className="p-3 text-emerald-400 font-mono font-bold">{call.callNo}</td>
                     <td className="p-3">
-                      <p className="font-semibold text-white">{c.customerName}</p>
-                      <p className="text-[11px] text-slate-400 font-mono">{c.customerMobile}</p>
+                      <p className="font-semibold text-white">{call.customerName}</p>
+                      <p className="text-slate-400 text-[10px] font-mono">{call.customerMobile}</p>
                     </td>
-                    <td className="p-3">{c.city}</td>
+                    <td className="p-3 text-white">{call.city}</td>
                     <td className="p-3">
-                      <p className="text-white font-medium">{c.brandName}</p>
-                      <p className="text-[11px] text-slate-400">{c.categoryName}</p>
+                      <span className="font-semibold text-slate-200 block">{call.brandName}</span>
+                      <span className="text-[10px] text-slate-400">{call.categoryName}</span>
                     </td>
-                    <td className="p-3 max-w-xs truncate" title={c.reportedFault}>{c.reportedFault}</td>
-                    <td className="p-3">{c.technicianName || <span className="text-slate-500">—</span>}</td>
                     <td className="p-3">
                       <span
-                        className={`text-[10px] px-2 py-0.5 rounded font-medium border ${
-                          c.callStatus === 'OPEN'
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                          call.callStatus === 'OPEN'
                             ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                            : c.callStatus === 'ALLOTED'
+                            : call.callStatus === 'COMPLETED'
                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : c.callStatus === 'PART_PENDING'
+                            : call.callStatus === 'ALLOTED'
+                            ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                            : call.callStatus === 'PART_PENDING'
                             ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                            : c.callStatus === 'COMPLETED'
-                            ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
-                            : c.callStatus === 'REOPENED'
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                             : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                         }`}
                       >
-                        {c.callStatus}
+                        {call.callStatus}
                       </span>
                     </td>
-                    <td className="p-3 text-right">
-                      <button
-                        onClick={() => handleOpenEdit(c)}
-                        className="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded border border-slate-700 transition"
-                      >
-                        Update
-                      </button>
+                    <td className="p-3 text-indigo-300 font-medium">
+                      {call.technicianName || <span className="text-slate-500 italic">Unassigned</span>}
                     </td>
+                    {!isClientUser && (
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => handleOpenEdit(call)}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition"
+                        >
+                          Quick Status
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* QUICK EDIT MODAL */}
+      {/* QUICK STATUS EDIT MODAL */}
       {editingCall && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1e293b] border border-[#334155] rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+          <div className="bg-[#1e293b] border border-[#334155] rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-[#334155] pb-2">
-              <h4 className="text-xs font-bold text-white">Update Call #{editingCall.callNo}</h4>
+              <h4 className="text-sm font-bold text-white">
+                Quick Update: <span className="font-mono text-emerald-400">#{editingCall.callNo}</span>
+              </h4>
               <button onClick={() => setEditingCall(null)} className="text-slate-400 hover:text-white text-xs">
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Call Status</label>
+                <label className="block text-slate-400 mb-1">Status</label>
                 <select
                   value={editStatus}
                   onChange={(e) => setEditStatus(e.target.value)}
-                  className="w-full bg-[#111c2e] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-2 text-white"
                 >
                   <option value="OPEN">OPEN</option>
                   <option value="APPOINTMENT">APPOINTMENT</option>
@@ -360,13 +408,13 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Assign Field Technician</label>
+                <label className="block text-slate-400 mb-1">Assigned Technician</label>
                 <input
                   type="text"
-                  placeholder="e.g. PRASHANT GUPTA"
                   value={editTechnician}
                   onChange={(e) => setEditTechnician(e.target.value)}
-                  className="w-full bg-[#111c2e] border border-[#334155] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="Technician name..."
+                  className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-2 text-white"
                 />
               </div>
             </div>
@@ -374,16 +422,16 @@ export default function DashboardView({ currentUser }: DashboardViewProps) {
             <div className="flex justify-end space-x-2 pt-3 border-t border-[#334155]">
               <button
                 onClick={() => setEditingCall(null)}
-                className="px-3 py-1.5 text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition"
+                className="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveEdit}
                 disabled={savingEdit}
-                className="px-4 py-1.5 text-xs text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition font-medium disabled:opacity-50"
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold"
               >
-                {savingEdit ? 'Saving...' : 'Save Changes'}
+                {savingEdit ? 'Saving...' : 'Save Update'}
               </button>
             </div>
           </div>

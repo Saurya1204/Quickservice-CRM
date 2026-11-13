@@ -327,6 +327,19 @@ export default function CallRegistrationModule({
   // Search filter for Language list
   const [languageSearch, setLanguageSearch] = useState('');
 
+  // Auto pre-fill client and brand if user has organizational scope
+  useEffect(() => {
+    if (currentUser?.clientId || currentUser?.clientName) {
+      setFormData((prev) => ({
+        ...prev,
+        clientId: currentUser.clientId || prev.clientId,
+        clientName: currentUser.clientName || prev.clientName,
+        brandId: currentUser.brandId || prev.brandId,
+        brandName: currentUser.brandName || prev.brandName,
+      }));
+    }
+  }, [currentUser]);
+
   // Load All Masters on Mount
   useEffect(() => {
     fetchAllMasters();

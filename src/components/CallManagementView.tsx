@@ -212,6 +212,19 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
       if (searchParams.serialNo) q.set('serialNo', searchParams.serialNo);
       if (searchParams.poNumber) q.set('poNumber', searchParams.poNumber);
 
+      // Enforce organizational scoping for non-superadmin users
+      if (!isSuperAdmin) {
+        if (currentUser?.clientId) q.set('clientId', currentUser.clientId);
+        else if (currentUser?.clientName) q.set('clientName', currentUser.clientName);
+
+        if (currentUser?.brandName) q.set('brand', currentUser.brandName);
+        if (currentUser?.franchiseName) q.set('franchise', currentUser.franchiseName);
+        if (currentUser?.technicianName) q.set('technician', currentUser.technicianName);
+        if (currentUser?.branchName || currentUser?.assignedBranch) {
+          q.set('branch', currentUser.branchName || currentUser.assignedBranch);
+        }
+      }
+
       const res = await fetch(`/api/calls?${q.toString()}`);
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {

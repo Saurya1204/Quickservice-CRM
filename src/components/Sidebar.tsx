@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { generateDefaultPermissions } from '@/lib/rbac';
 
 interface SidebarProps {
   currentSection: string;
@@ -33,11 +34,26 @@ export default function Sidebar({
 
   const canAccess = (moduleKey: string, subSectionKey?: string): boolean => {
     if (isSuperAdmin) return true;
-    if (!currentUser || !currentUser.permissions || !Array.isArray(currentUser.permissions)) {
-      return true;
+    if (!currentUser) return false;
+
+    // Strict guardrails: Client users and field technicians must never see internal user or master administration
+    if (['CLIENT_ADMIN', 'CLIENT_USER'].includes(roleCode)) {
+      if (['users', 'roleMaster', 'branchMaster', 'franchiseMaster', 'technicianMaster', 'clientMaster', 'brandMaster', 'categoryMaster', 'otherMasters', 'mapping', 'uploader', 'utilities'].includes(moduleKey)) {
+        return false;
+      }
+    }
+    if (roleCode === 'TECHNICIAN') {
+      if (['users', 'roleMaster', 'branchMaster', 'franchiseMaster', 'clientMaster', 'brandMaster', 'categoryMaster', 'otherMasters', 'mapping', 'uploader', 'utilities', 'masterData'].includes(moduleKey)) {
+        return false;
+      }
     }
 
-    const perm = currentUser.permissions.find((p: any) => p.module === moduleKey);
+    let perms = currentUser.permissions;
+    if (!perms || !Array.isArray(perms) || perms.length === 0) {
+      perms = generateDefaultPermissions(roleCode);
+    }
+
+    const perm = perms.find((p: any) => p.module === moduleKey);
     if (!perm || perm.accessLevel === 'NO_ACCESS') return false;
 
     if (subSectionKey && perm.subSections) {
@@ -239,7 +255,17 @@ export default function Sidebar({
               onClick={() => handleItemClick('dashboard')}
               className={headerButtonClass(currentSection === 'dashboard')}
             >
-              <span>{isSuperAdmin ? 'Admin Dashboard' : 'User Dashboard'}</span>
+              <span>
+                {isSuperAdmin
+                  ? 'Admin Dashboard'
+                  : roleCode.startsWith('CLIENT')
+                  ? 'Client Portal'
+                  : roleCode === 'TECHNICIAN'
+                  ? 'Technician Hub'
+                  : roleCode === 'FRANCHISE_MANAGER'
+                  ? 'Franchise Portal'
+                  : 'Dashboard'}
+              </span>
             </button>
           </div>
 

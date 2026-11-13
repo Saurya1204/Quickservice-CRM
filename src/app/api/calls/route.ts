@@ -23,7 +23,39 @@ export async function GET(req: Request) {
     const poNumber = searchParams.get('poNumber');
     const callId = searchParams.get('id');
 
+    // Organizational Scoping
+    const clientId = searchParams.get('clientId');
+    const clientName = searchParams.get('clientName');
+    const brand = searchParams.get('brand');
+    const technician = searchParams.get('technician') || searchParams.get('technicianName');
+    const franchise = searchParams.get('franchise');
+
     const query: any = {};
+
+    if (clientId || clientName) {
+      if (clientId && clientName) {
+        query.$or = [{ clientId }, { clientName: { $regex: new RegExp(clientName.trim(), 'i') } }];
+      } else if (clientId) {
+        query.clientId = clientId;
+      } else if (clientName) {
+        query.clientName = { $regex: new RegExp(clientName.trim(), 'i') };
+      }
+    }
+
+    if (brand && brand.trim() && brand !== 'All') {
+      query.brandName = { $regex: new RegExp(brand.trim(), 'i') };
+    }
+
+    if (technician && technician.trim() && technician !== 'All') {
+      query.technicianName = { $regex: new RegExp(technician.trim(), 'i') };
+    }
+
+    if (franchise && franchise.trim() && franchise !== 'All') {
+      query.$or = [
+        { ascName: { $regex: new RegExp(franchise.trim(), 'i') } },
+        { serviceProviderName: { $regex: new RegExp(franchise.trim(), 'i') } },
+      ];
+    }
 
     if (callId) {
       const singleCall = await ServiceCall.findById(callId).lean();

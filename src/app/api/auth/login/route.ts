@@ -60,14 +60,17 @@ export async function POST(req: Request) {
       });
     }
 
-    // Default to Super Admin permissions if user is admin or role not found
+    // Resolve whether user is Super Admin
+    const userRoleLower = (user.role || '').toLowerCase();
     const isSuperAdmin =
-      !roleDoc ||
-      roleDoc.code === 'SUPER_ADMIN' ||
-      user.role === 'SUPER_ADMIN' ||
-      user.role === 'Super Admin';
+      (roleDoc && roleDoc.code === 'SUPER_ADMIN') ||
+      userRoleLower === 'super admin' ||
+      user.username === 'admin';
 
-    const roleCode = roleDoc ? roleDoc.code : isSuperAdmin ? 'SUPER_ADMIN' : 'CCO';
+    const roleCode = roleDoc
+      ? roleDoc.code
+      : user.roleCode || (isSuperAdmin ? 'SUPER_ADMIN' : user.role.toUpperCase().replace(/\s+/g, '_'));
+
     const permissions =
       roleDoc && roleDoc.permissions && roleDoc.permissions.length > 0
         ? roleDoc.permissions
@@ -83,8 +86,22 @@ export async function POST(req: Request) {
         role: roleDoc ? roleDoc.name : user.role,
         roleCode: roleCode,
         hierarchyLevel: roleDoc ? roleDoc.hierarchyLevel : isSuperAdmin ? 1 : 7,
-        assignedZone: user.assignedZone || user.categoryClientRegion || '',
-        assignedBranch: user.assignedBranch || user.branch || '',
+        organizationalScope: user.organizationalScope || 'NATIONAL',
+        clientId: user.clientId || null,
+        clientName: user.clientName || '',
+        brandId: user.brandId || null,
+        brandName: user.brandName || '',
+        assignedBrands: user.assignedBrands || [],
+        branchId: user.branchId || null,
+        branchName: user.branchName || user.assignedBranch || user.branch || '',
+        zoneId: user.zoneId || '',
+        zoneName: user.zoneName || user.assignedZone || '',
+        franchiseId: user.franchiseId || null,
+        franchiseName: user.franchiseName || '',
+        technicianId: user.technicianId || null,
+        technicianName: user.technicianName || '',
+        assignedZone: user.assignedZone || user.zoneName || '',
+        assignedBranch: user.assignedBranch || user.branchName || '',
         assignedArea: user.assignedArea || '',
         permissions,
       },
