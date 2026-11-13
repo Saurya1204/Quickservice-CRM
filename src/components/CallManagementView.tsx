@@ -1,33 +1,162 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import PincodeField from '@/components/common/PincodeLookup';
 import CallRegistrationModule from '@/components/CallRegistrationModule';
 import CallUpdateModule from '@/components/CallUpdateModule';
+import CallDetailModal from '@/components/CallDetailModal';
+import JobsheetPrintModal from '@/components/JobsheetPrintModal';
 
 interface CallManagementProps {
   initialMode?: string;
   currentUser?: any;
 }
 
+export const CALL_MODULE_TITLES: Record<string, { title: string; subtitle: string; icon: string; badge: string }> = {
+  callRegistration: {
+    title: 'Call Registration',
+    subtitle: 'Register customer complaints and new service requests with real-time master lookup',
+    icon: '📝',
+    badge: 'Registration',
+  },
+  callView: {
+    title: 'Call View',
+    subtitle: 'Comprehensive 11-section service complaint lifecycle view, history & attachment download',
+    icon: '👁️',
+    badge: 'Directory',
+  },
+  callEdit: {
+    title: 'Call Edit',
+    subtitle: 'Modify customer information, contact coordinates, appliances, and service status',
+    icon: '✏️',
+    badge: 'Modify',
+  },
+  callReminder: {
+    title: 'Call Reminder',
+    subtitle: 'Record caller follow-ups, customer talk notes, and operational call logs',
+    icon: '⏰',
+    badge: 'Follow-up',
+  },
+  callAppointment: {
+    title: 'Call Appointment',
+    subtitle: 'Schedule technician home visit dates and customer appointment time slots',
+    icon: '📅',
+    badge: 'Schedule',
+  },
+  callReschedule: {
+    title: 'Call Reschedule',
+    subtitle: 'Re-assign visit appointments due to customer unavailability or technician delay',
+    icon: '🔄',
+    badge: 'Reschedule',
+  },
+  callTransfer: {
+    title: 'Call Transfer',
+    subtitle: 'Transfer complaint assignment to an alternate service engineer or regional service branch',
+    icon: '🔀',
+    badge: 'Transfer',
+  },
+  callReopen: {
+    title: 'Call Reopen',
+    subtitle: 'Restore previously closed or cancelled service calls with mandatory justification',
+    icon: '🔓',
+    badge: 'Reopen',
+  },
+  callCancel: {
+    title: 'Call Cancel',
+    subtitle: 'Cancel active complaints with recorded operational justification and status update',
+    icon: '❌',
+    badge: 'Cancellation',
+  },
+  callFeedback: {
+    title: 'Call Feedback',
+    subtitle: 'Record post-service customer satisfaction ratings, NPS score, and feedback comments',
+    icon: '⭐',
+    badge: 'Feedback',
+  },
+  callUpdate: {
+    title: 'Call Update / Job Sheet',
+    subtitle: 'Technician job sheet update, spare parts replacement, labour collection & PART PENDING validation',
+    icon: '📋',
+    badge: 'Job Sheet',
+  },
+  callAllotment: {
+    title: 'Call Allotment',
+    subtitle: 'Allot unassigned customer service tickets to designated service technicians',
+    icon: '👷',
+    badge: 'Allotment',
+  },
+  jobsheetPrint: {
+    title: 'Jobsheet Print',
+    subtitle: 'Generate professional A4 printable customer service work orders with brand logo & signatures',
+    icon: '🖨️',
+    badge: 'Print',
+  },
+  directCancel: {
+    title: 'Direct Cancel',
+    subtitle: 'Direct cancellation of service tickets by authorized administrators with immediate effect',
+    icon: '🚫',
+    badge: 'Direct Cancel',
+  },
+  directCancelPo: {
+    title: 'Direct Cancel PO',
+    subtitle: 'Cancel Purchase Orders and parts requisition tickets with supplier audit trail',
+    icon: '📄',
+    badge: 'PO Cancel',
+  },
+  updateSerialNo: {
+    title: 'Update Serial No.',
+    subtitle: 'Modify or correct appliance unit set serial numbers with historical audit logging',
+    icon: '🔢',
+    badge: 'Serial No',
+  },
+  callAudit: {
+    title: 'Call Audit',
+    subtitle: 'Immutable chronological audit trail of all operational transactions, IP logs & timestamps',
+    icon: '📜',
+    badge: 'Audit Trail',
+  },
+};
+
 export default function CallManagementView({ initialMode = 'callView', currentUser }: CallManagementProps) {
+  const [activeTab, setActiveTab] = useState<string>(initialMode);
   const [calls, setCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(initialMode);
-  const [filterStatus, setFilterStatus] = useState('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
 
-  // Selected call for actions
-  const [selectedCall, setSelectedCall] = useState<any | null>(null);
-  const [actionType, setActionType] = useState<string | null>(null);
-  const [actionInput, setActionInput] = useState('');
-  const [actionDate, setActionDate] = useState('');
-  const [actionSaving, setActionSaving] = useState(false);
-  const [reopenHistoryModalCall, setReopenHistoryModalCall] = useState<any | null>(null);
-  const [masterCategories, setMasterCategories] = useState<any[]>([]);
+  // Search & Filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [searchParams, setSearchParams] = useState({
+    complaintNo: '',
+    customerName: '',
+    mobile: '',
+    serialNo: '',
+    poNumber: '',
+  });
+
+  // Modal dialog states
+  const [detailModalCall, setDetailModalCall] = useState<any | null>(null);
+  const [printModalCall, setPrintModalCall] = useState<any | null>(null);
   const [updateCallId, setUpdateCallId] = useState<string | undefined>(undefined);
 
-  // Check Reopen Permission
+  // Action Dialog state (for Allotment, Appointment, Reschedule, Reminder, Reopen, Transfer, Cancel, Feedback, etc.)
+  const [actionCall, setActionCall] = useState<any | null>(null);
+  const [actionType, setActionType] = useState<string | null>(null);
+  const [actionInput, setActionInput] = useState('');
+  const [actionInput2, setActionInput2] = useState('');
+  const [actionDate, setActionDate] = useState('');
+  const [actionTime, setActionTime] = useState('10:00 AM');
+  const [actionRating, setActionRating] = useState(5);
+  const [actionSaving, setActionSaving] = useState(false);
+
+  // Call Audit state
+  const [auditQuery, setAuditQuery] = useState('');
+  const [auditCall, setAuditCall] = useState<any | null>(null);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+
+  // Edit Call state
+  const [editCallData, setEditCallData] = useState<any>({});
+
+  // Super Admin / Reopen authorization
   const isSuperAdmin =
     currentUser?.role === 'Super Admin' ||
     currentUser?.roleCode === 'SUPER_ADMIN' ||
@@ -41,746 +170,929 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
         (p.actions?.reopenCall || p.accessLevel === 'FULL')
     );
 
-  // New Call Form
-  const [newCall, setNewCall] = useState({
-    customerName: '',
-    customerMobile: '',
-    customerAddress: '',
-    city: 'GHAZIABAD',
-    state: 'UTTAR PRADESH',
-    pincode: '201014',
-    clientName: 'MACKAVM INTERNATIONAL PRIVATE LIMITED',
-    brandName: 'SAMSUNG',
-    categoryName: 'Air Conditioner',
-    reportedFault: '',
-    callStatus: 'OPEN',
-    technicianName: '',
-  });
-
-  const [editingCallData, setEditingCallData] = useState({
-    customerName: '',
-    customerMobile: '',
-    customerAddress: '',
-    city: 'GHAZIABAD',
-    state: 'UTTAR PRADESH',
-    pincode: '201014',
-    clientName: 'MACKAVM INTERNATIONAL PRIVATE LIMITED',
-    brandName: 'SAMSUNG',
-    categoryName: 'Air Conditioner',
-    reportedFault: '',
-    callStatus: 'OPEN',
-    technicianName: '',
-  });
-
-  const [registering, setRegistering] = useState(false);
-
-  const handleStartEdit = (call: any) => {
-    setSelectedCall(call);
-    setActionType('edit');
-    setEditingCallData({
-      customerName: call.customerName || '',
-      customerMobile: call.customerMobile || '',
-      customerAddress: call.customerAddress || '',
-      city: call.city || 'GHAZIABAD',
-      state: call.state || 'UTTAR PRADESH',
-      pincode: call.pincode || '201014',
-      clientName: call.clientName || '',
-      brandName: call.brandName || '',
-      categoryName: call.categoryName || '',
-      reportedFault: call.reportedFault || '',
-      callStatus: call.callStatus || 'OPEN',
-      technicianName: call.technicianName || '',
-    });
-  };
-
-  const handleDeleteCall = async (id: string, callNo: string) => {
-    if (!confirm(`Are you sure you want to delete call #${callNo}?`)) return;
-    try {
-      const res = await fetch(`/api/calls?id=${id}`, { method: 'DELETE' });
-      const json = await res.json();
-      if (json.success) {
-        fetchCalls();
-      } else {
-        alert(json.message);
-      }
-    } catch (e: any) {
-      alert(e.message);
-    }
-  };
-
+  // React to initialMode prop updates
   useEffect(() => {
     setActiveTab(initialMode);
     if (initialMode === 'callAppointment') {
       setFilterStatus('APPOINTMENT');
     } else if (initialMode === 'callAllotment') {
       setFilterStatus('OPEN');
-    } else if (initialMode === 'callCancel' || initialMode === 'directCancel' || initialMode === 'directCancelPo') {
-      setFilterStatus('CANCEL');
-    } else if (initialMode === 'callFeedback') {
-      setFilterStatus('COMPLETED');
     } else if (initialMode === 'callReopen') {
       setFilterStatus('CLOSED');
-    } else if (initialMode === 'callRegistration') {
-      setActiveTab('callRegistration');
+    } else if (initialMode === 'callFeedback') {
+      setFilterStatus('COMPLETED');
+    } else if (initialMode === 'callCancel' || initialMode === 'directCancel') {
+      setFilterStatus('CANCEL');
     } else {
       setFilterStatus('ALL');
     }
   }, [initialMode]);
 
+  // Fetch calls whenever filterStatus changes or when a search is triggered
   useEffect(() => {
-    fetchCalls();
-    fetchCategories();
-  }, [filterStatus]);
-
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch('/api/masters/categories');
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        setMasterCategories(json.data);
-      }
-    } catch (e) {
-      console.error('Error fetching categories:', e);
+    if (activeTab !== 'callRegistration' && activeTab !== 'callAudit') {
+      fetchCalls();
     }
-  };
+  }, [filterStatus, activeTab]);
 
   const fetchCalls = async () => {
     setLoading(true);
     try {
-      let url = '/api/calls';
+      const q = new URLSearchParams();
       if (filterStatus === 'CLOSED') {
-        url = '/api/calls?status=CLOSED';
+        q.set('status', 'CLOSED');
       } else if (filterStatus !== 'ALL') {
-        url = `/api/calls?status=${filterStatus}`;
+        q.set('status', filterStatus);
       }
-      const res = await fetch(url);
+
+      if (searchParams.complaintNo) q.set('complaintNo', searchParams.complaintNo);
+      if (searchParams.customerName) q.set('customerName', searchParams.customerName);
+      if (searchParams.mobile) q.set('mobile', searchParams.mobile);
+      if (searchParams.serialNo) q.set('serialNo', searchParams.serialNo);
+      if (searchParams.poNumber) q.set('poNumber', searchParams.poNumber);
+
+      const res = await fetch(`/api/calls?${q.toString()}`);
       const json = await res.json();
-      if (json.success) {
+      if (json.success && Array.isArray(json.data)) {
         setCalls(json.data);
+      } else {
+        setCalls([]);
       }
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error('Error fetching service calls:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRegisterCall = async (e: React.FormEvent) => {
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setRegistering(true);
-    try {
-      const res = await fetch('/api/calls', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newCall,
-          createdBy: currentUser?.fullName || 'Call Coordinator',
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        alert('Service Call registered successfully with Call No: ' + json.data.callNo);
-        setNewCall({
-          customerName: '',
-          customerMobile: '',
-          customerAddress: '',
-          city: 'GHAZIABAD',
-          state: 'UTTAR PRADESH',
-          pincode: '201014',
-          clientName: 'MACKAVM INTERNATIONAL PRIVATE LIMITED',
-          brandName: 'SAMSUNG',
-          categoryName: 'Air Conditioner',
-          reportedFault: '',
-          callStatus: 'OPEN',
-          technicianName: '',
-        });
-        setActiveTab('callView');
-        fetchCalls();
-      } else {
-        alert(json.message);
-      }
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setRegistering(false);
-    }
+    fetchCalls();
   };
 
-  const handleTriggerReopen = (call: any) => {
-    if (!canReopen) {
-      alert('You do not have permission to reopen closed calls. Contact your administrator.');
+  const handleClearSearch = () => {
+    setSearchParams({
+      complaintNo: '',
+      customerName: '',
+      mobile: '',
+      serialNo: '',
+      poNumber: '',
+    });
+    setSearchTerm('');
+    setFilterStatus('ALL');
+    setTimeout(() => {
+      fetchCalls();
+    }, 50);
+  };
+
+  // Dedicated Call Audit Search
+  const handleFetchAudit = async (q?: string) => {
+    const queryToUse = q || auditQuery;
+    if (!queryToUse || !queryToUse.trim()) {
+      alert('Please enter a Complaint Number or Call ID to fetch audit trail.');
       return;
     }
-    setSelectedCall(call);
-    setActionType('reopen');
-    setActionInput('');
+    setAuditLoading(true);
+    try {
+      const res = await fetch(`/api/calls/audit?complaintNo=${encodeURIComponent(queryToUse.trim())}`);
+      const json = await res.json();
+      if (json.success) {
+        setAuditCall(json.data.call);
+        setAuditLogs(json.data.auditLogs || []);
+      } else {
+        alert(json.message || 'Call audit record not found.');
+        setAuditCall(null);
+        setAuditLogs([]);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to fetch audit trail.');
+    } finally {
+      setAuditLoading(false);
+    }
   };
 
+  // Open Action Dialog
+  const openActionDialog = (call: any, type: string) => {
+    setActionCall(call);
+    setActionType(type);
+    setActionInput('');
+    setActionInput2('');
+    setActionDate(new Date().toISOString().split('T')[0]);
+    setActionTime('10:00 AM');
+    setActionRating(5);
+
+    if (type === 'edit') {
+      setEditCallData({
+        customerName: call.customerName || '',
+        customerMobile: call.customerMobile || '',
+        customerAddress: call.customerAddress || '',
+        city: call.city || '',
+        state: call.state || '',
+        pincode: call.pincode || '',
+        brandName: call.brandName || '',
+        categoryName: call.categoryName || '',
+        modelNo: call.modelNo || '',
+        serialNo: call.serialNo || call.unitSerialNumber || '',
+        reportedFault: call.reportedFault || '',
+        callStatus: call.callStatus || 'OPEN',
+        technicianName: call.technicianName || '',
+      });
+    } else if (type === 'allot') {
+      setActionInput(call.technicianName || 'PRASHANT GUPTA');
+    } else if (type === 'updateSerialNo') {
+      setActionInput(call.unitSerialNumber || call.serialNo || '');
+    } else if (type === 'directCancelPo') {
+      setActionInput(call.poNumber || `PO-${call.callNo}`);
+    }
+  };
+
+  // Execute Action Dialog (Calls PUT /api/calls)
   const handleExecuteAction = async () => {
-    if (!selectedCall) return;
+    if (!actionCall || !actionType) return;
     setActionSaving(true);
 
     try {
+      const performedBy = currentUser?.fullName || currentUser?.name || 'Administrator';
+      let payload: any = {
+        id: actionCall._id,
+        action: actionType,
+        performedBy,
+      };
+
       if (actionType === 'reopen') {
-        if (!actionInput || !actionInput.trim()) {
-          alert('Reopening Reason is mandatory. Please provide a clear justification.');
+        if (!canReopen) {
+          alert('You do not have permission to reopen closed calls.');
           setActionSaving(false);
           return;
         }
-
-        const res = await fetch('/api/calls/reopen', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: selectedCall._id,
-            reason: actionInput.trim(),
-            reopenedBy: currentUser?.fullName || 'Authorized Officer',
-          }),
-        });
-        const json = await res.json();
-        if (json.success) {
-          alert(`Call #${selectedCall.callNo} successfully reopened! It has been restored to active status.`);
-          setSelectedCall(null);
-          setActionType(null);
-          setActionInput('');
-          fetchCalls();
-        } else {
-          alert(json.message);
+        if (!actionInput.trim()) {
+          alert('Reopening justification reason is mandatory.');
+          setActionSaving(false);
+          return;
         }
-        return;
-      }
-
-      const updatePayload: any = { id: selectedCall._id };
-
-      if (actionType === 'edit') {
-        Object.assign(updatePayload, editingCallData);
-      } else if (actionType === 'allot') {
-        updatePayload.technicianName = actionInput || 'PRASHANT GUPTA';
-        updatePayload.callStatus = 'ALLOTED';
+        payload.reopenReason = actionInput.trim();
+        payload.reopenedBy = performedBy;
       } else if (actionType === 'appointment' || actionType === 'reschedule') {
-        updatePayload.appointmentDate = actionDate || new Date();
-        updatePayload.callStatus = 'APPOINTMENT';
-      } else if (actionType === 'cancel' || actionType === 'directCancel') {
-        updatePayload.callStatus = 'CANCEL';
-      } else if (actionType === 'feedback') {
-        updatePayload.callStatus = 'COMPLETED';
+        if (!actionDate) {
+          alert('Appointment date is mandatory.');
+          setActionSaving(false);
+          return;
+        }
+        payload.appointmentDate = actionDate;
+        payload.appointmentTime = actionTime;
+        payload.remarks = actionInput.trim() || (actionType === 'reschedule' ? 'Customer requested reschedule' : 'Appointment set');
+      } else if (actionType === 'allot') {
+        if (!actionInput.trim()) {
+          alert('Please enter or select a technician name.');
+          setActionSaving(false);
+          return;
+        }
+        payload.technicianName = actionInput.trim();
+        payload.remarks = actionInput2.trim() || `Allotted to ${actionInput.trim()}`;
       } else if (actionType === 'transfer') {
-        updatePayload.city = actionInput || selectedCall.city;
-      } else if (actionType === 'serial') {
-        updatePayload.reportedFault = `${selectedCall.reportedFault} [Serial: ${actionInput}]`;
+        if (!actionInput.trim()) {
+          alert('Please specify the new technician to transfer the call to.');
+          setActionSaving(false);
+          return;
+        }
+        payload.toEngineer = actionInput.trim();
+        payload.toBranch = actionInput2.trim();
+        payload.remarks = `Transferred from ${actionCall.technicianName || 'Unassigned'} to ${actionInput.trim()}`;
+      } else if (actionType === 'reminder') {
+        if (!actionInput.trim()) {
+          alert('Reminder note / remarks cannot be empty.');
+          setActionSaving(false);
+          return;
+        }
+        payload.remarks = actionInput.trim();
+        payload.talkToWhom = actionInput2.trim() || actionCall.customerName;
+        payload.callBy = performedBy;
+      } else if (actionType === 'cancel' || actionType === 'directCancel') {
+        if (!actionInput.trim()) {
+          alert('Cancellation reason is mandatory.');
+          setActionSaving(false);
+          return;
+        }
+        payload.remarks = actionInput.trim();
+        payload.reason = actionInput.trim();
+      } else if (actionType === 'directCancelPo') {
+        if (!actionInput.trim()) {
+          alert('PO Number is mandatory.');
+          setActionSaving(false);
+          return;
+        }
+        if (!actionInput2.trim()) {
+          alert('PO Cancellation reason is mandatory.');
+          setActionSaving(false);
+          return;
+        }
+        payload.poNumber = actionInput.trim();
+        payload.poCancellationReason = actionInput2.trim();
+      } else if (actionType === 'feedback') {
+        payload.rating = actionRating;
+        payload.customerComments = actionInput.trim();
+        payload.isSatisfied = actionRating >= 3;
+      } else if (actionType === 'updateSerialNo') {
+        if (!actionInput.trim()) {
+          alert('New Serial Number is mandatory.');
+          setActionSaving(false);
+          return;
+        }
+        payload.newSerialNo = actionInput.trim();
+        payload.reason = actionInput2.trim() || 'Corrected serial number';
+      } else if (actionType === 'edit') {
+        payload = {
+          id: actionCall._id,
+          action: 'edit',
+          performedBy,
+          ...editCallData,
+        };
       }
 
       const res = await fetch('/api/calls', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatePayload),
+        body: JSON.stringify(payload),
       });
+
       const json = await res.json();
       if (json.success) {
-        setSelectedCall(null);
+        alert(json.message || 'Operation executed successfully!');
+        setActionCall(null);
         setActionType(null);
-        setActionInput('');
         fetchCalls();
       } else {
-        alert(json.message);
+        alert(json.message || 'Failed to perform operation.');
       }
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || 'An error occurred.');
     } finally {
       setActionSaving(false);
     }
   };
 
-  const filteredCalls = calls.filter(
-    (c) =>
-      c.callNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.customerMobile?.includes(searchTerm) ||
-      c.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.technicianName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtered in-memory calls for quick search bar
+  const displayedCalls = calls.filter((c) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      c.callNo?.toLowerCase().includes(term) ||
+      c.customerName?.toLowerCase().includes(term) ||
+      c.customerMobile?.includes(term) ||
+      c.city?.toLowerCase().includes(term) ||
+      c.technicianName?.toLowerCase().includes(term) ||
+      c.serialNo?.toLowerCase().includes(term) ||
+      c.unitSerialNumber?.toLowerCase().includes(term) ||
+      c.brandName?.toLowerCase().includes(term)
+    );
+  });
+
+  const currentModuleInfo = CALL_MODULE_TITLES[activeTab] || CALL_MODULE_TITLES.callView;
 
   return (
     <div className="space-y-6">
-      <div className="bg-[#1e293b] border border-[#334155] rounded-xl p-6 space-y-4 shadow-xl">
-        {/* Navigation Mode Selector */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#334155] pb-4">
-          <div>
-            <h2 className="text-lg font-bold text-white flex items-center space-x-2">
-              <span>Call Management Operations</span>
-              <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full font-mono">
-                {calls.length} calls
-              </span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Service Request Intake, Allotment, Reopen, Rescheduling & Lifecycle Tracking
-            </p>
+      {/* HEADER SECTION WITH ICON, TITLE & QUICK ACTION TABS */}
+      <div className="bg-[#1e293b] border border-[#334155] rounded-xl p-5 shadow-xl space-y-4">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-[#334155] pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shadow-inner">
+              {currentModuleInfo.icon}
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h2 className="text-lg font-bold text-white tracking-wide">{currentModuleInfo.title}</h2>
+                <span className="text-[10px] font-mono uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                  {currentModuleInfo.badge}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">{currentModuleInfo.subtitle}</p>
+            </div>
           </div>
 
+          {/* QUICK SHORTCUT BUTTONS */}
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => {
-                setActiveTab('callView');
-                setFilterStatus('ALL');
-              }}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${
-                activeTab === 'callView' && filterStatus === 'ALL'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
+              onClick={() => setActiveTab('callRegistration')}
+              className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition flex items-center space-x-1.5 shadow ${activeTab === 'callRegistration'
+                  ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
             >
-              All Calls
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('callReopen');
-                setFilterStatus('CLOSED');
-              }}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center space-x-1.5 ${
-                activeTab === 'callReopen' || filterStatus === 'CLOSED'
-                  ? 'bg-amber-600 text-white shadow'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              <span>🔄 Reopen Closed Calls</span>
+              <span>➕ Call Registration</span>
             </button>
             <button
               onClick={() => {
                 setUpdateCallId(undefined);
                 setActiveTab('callUpdate');
               }}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${
-                activeTab === 'callUpdate'
-                  ? 'bg-emerald-600 text-white shadow'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
+              className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition flex items-center space-x-1.5 shadow ${activeTab === 'callUpdate'
+                  ? 'bg-emerald-600 text-white ring-2 ring-emerald-400'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
             >
-              📋 Call Update / Job Sheet
+              <span>📋 Call Update / Job Sheet</span>
             </button>
             <button
-              onClick={() => setActiveTab('callRegistration')}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${
-                activeTab === 'callRegistration'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
+              onClick={() => setActiveTab('callView')}
+              className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition flex items-center space-x-1.5 shadow ${activeTab === 'callView'
+                  ? 'bg-slate-700 text-white ring-2 ring-slate-400'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
             >
-              + Call Registration
+              <span>👁️ All Calls</span>
             </button>
           </div>
         </div>
 
-        {/* Action Modal */}
-        {selectedCall && actionType && (
-          <div className="bg-[#172033] border border-blue-500/30 p-5 rounded-xl space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-[#334155] pb-2">
-              <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center space-x-2">
-                <span>
-                  {actionType === 'reopen'
-                    ? '🔄 REOPEN SERVICE CALL'
-                    : `Action: ${actionType.toUpperCase()}`}
-                </span>
-                <span className="text-white font-mono">#{selectedCall.callNo}</span>
-              </h4>
-              <button
-                onClick={() => {
-                  setSelectedCall(null);
-                  setActionType(null);
-                }}
-                className="text-slate-400 hover:text-white text-xs"
-              >
-                ✕ Cancel
-              </button>
-            </div>
-
-            {actionType === 'reopen' ? (
-              <div className="space-y-3">
-                <div className="bg-[#0f172a] p-3 rounded-lg border border-[#334155] grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">Customer</span>
-                    <span className="text-white font-medium">{selectedCall.customerName}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">Mobile</span>
-                    <span className="text-slate-300 font-mono">{selectedCall.customerMobile}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">Current Status</span>
-                    <span className="text-rose-400 font-bold">{selectedCall.callStatus}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">Product</span>
-                    <span className="text-slate-300">{selectedCall.brandName} - {selectedCall.categoryName}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-amber-400 mb-1">
-                    Reopening Reason (Mandatory) *
-                  </label>
-                  <textarea
-                    rows={3}
-                    required
-                    placeholder="Provide specific reason for reopening this closed call (e.g., Customer reported cooling fault recurred, parts replaced were defective, further inspection required)..."
-                    value={actionInput}
-                    onChange={(e) => setActionInput(e.target.value)}
-                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    ℹ️ Reopening will restore this ticket to the active call workflow and record an audit log with your timestamp and user ID.
-                  </p>
-                </div>
-              </div>
-            ) : actionType === 'edit' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-0.5">Customer Name</label>
-                  <input
-                    type="text"
-                    value={editingCallData.customerName}
-                    onChange={(e) => setEditingCallData({ ...editingCallData, customerName: e.target.value })}
-                    className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-0.5">Customer Mobile</label>
-                  <input
-                    type="text"
-                    value={editingCallData.customerMobile}
-                    onChange={(e) => setEditingCallData({ ...editingCallData, customerMobile: e.target.value })}
-                    className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-0.5">Status</label>
-                  <select
-                    value={editingCallData.callStatus}
-                    onChange={(e) => setEditingCallData({ ...editingCallData, callStatus: e.target.value as any })}
-                    className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
-                  >
-                    <option value="OPEN">OPEN</option>
-                    <option value="APPOINTMENT">APPOINTMENT</option>
-                    <option value="ALLOTED">ALLOTED</option>
-                    <option value="PART_PENDING">PART_PENDING</option>
-                    <option value="COMPLETED">COMPLETED</option>
-                    <option value="CANCEL">CANCEL</option>
-                    <option value="REOPENED">REOPENED</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-0.5">Technician Name</label>
-                  <input
-                    type="text"
-                    value={editingCallData.technicianName}
-                    onChange={(e) => setEditingCallData({ ...editingCallData, technicianName: e.target.value })}
-                    className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-[11px] text-slate-400 mb-0.5">Reported Fault</label>
-                  <input
-                    type="text"
-                    value={editingCallData.reportedFault}
-                    onChange={(e) => setEditingCallData({ ...editingCallData, reportedFault: e.target.value })}
-                    className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="bg-[#0f172a] p-3 rounded-lg border border-[#334155]">
-                  <p className="text-xs text-slate-300">
-                    Customer: <span className="text-white font-medium">{selectedCall.customerName}</span> ({selectedCall.customerMobile})
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Product: <span className="text-white font-medium">{selectedCall.brandName} - {selectedCall.categoryName}</span>
-                  </p>
-                </div>
-
-                <div>
-                  {actionType === 'allot' && (
-                    <div>
-                      <label className="block text-xs font-medium text-slate-300 mb-1">Assign Technician Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. PRASHANT GUPTA"
-                        value={actionInput}
-                        onChange={(e) => setActionInput(e.target.value)}
-                        className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                  )}
-
-                  {(actionType === 'appointment' || actionType === 'reschedule') && (
-                    <div>
-                      <label className="block text-xs font-medium text-slate-300 mb-1">Appointment Date</label>
-                      <input
-                        type="date"
-                        value={actionDate}
-                        onChange={(e) => setActionDate(e.target.value)}
-                        className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                  )}
-
-                  {actionType === 'serial' && (
-                    <div>
-                      <label className="block text-xs font-medium text-slate-300 mb-1">Appliance Serial Number</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. SN-88291002"
-                        value={actionInput}
-                        onChange={(e) => setActionInput(e.target.value)}
-                        className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white font-mono"
-                      />
-                    </div>
-                  )}
-
-                  {actionType === 'cancel' && (
-                    <p className="text-xs text-rose-400">Are you sure you want to cancel this service call?</p>
-                  )}
-
-                  {actionType === 'feedback' && (
-                    <div>
-                      <label className="block text-xs font-medium text-slate-300 mb-1">Customer Feedback Remarks</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Work completed satisfactorily"
-                        value={actionInput}
-                        onChange={(e) => setActionInput(e.target.value)}
-                        className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end space-x-2 pt-2 border-t border-[#334155]">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedCall(null);
-                  setActionType(null);
-                }}
-                className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={handleExecuteAction}
-                disabled={actionSaving}
-                className={`text-white text-xs px-4 py-1.5 rounded font-medium shadow ${
-                  actionType === 'reopen'
-                    ? 'bg-amber-600 hover:bg-amber-500'
-                    : 'bg-emerald-600 hover:bg-emerald-500'
+        {/* 17 SUB-MODULE QUICK NAVIGATION PILLS */}
+        <div className="flex flex-wrap gap-1.5 pt-1 text-[11px] overflow-x-auto pb-1 custom-horizontal-scrollbar">
+          {[
+            { id: 'callRegistration', label: '1. Registration' },
+            { id: 'callView', label: '2. Call View' },
+            { id: 'callEdit', label: '3. Call Edit' },
+            { id: 'callReminder', label: '4. Reminder' },
+            { id: 'callAppointment', label: '5. Appointment' },
+            { id: 'callReschedule', label: '6. Reschedule' },
+            { id: 'callTransfer', label: '7. Transfer' },
+            { id: 'callReopen', label: '8. Reopen' },
+            { id: 'callCancel', label: '9. Cancel' },
+            { id: 'callFeedback', label: '10. Feedback' },
+            { id: 'callUpdate', label: '11. Job Sheet' },
+            { id: 'callAllotment', label: '12. Allotment' },
+            { id: 'jobsheetPrint', label: '13. Print Jobsheet' },
+            { id: 'directCancel', label: '14. Direct Cancel' },
+            { id: 'directCancelPo', label: '15. Cancel PO' },
+            { id: 'updateSerialNo', label: '16. Update Serial' },
+            { id: 'callAudit', label: '17. Call Audit' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-2.5 py-1 rounded font-medium transition cursor-pointer whitespace-nowrap ${activeTab === tab.id
+                  ? 'bg-emerald-600 text-white font-bold shadow-md'
+                  : 'bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
                 }`}
-              >
-                {actionSaving ? 'Executing...' : actionType === 'reopen' ? 'Confirm Reopening' : 'Confirm Action'}
-              </button>
-            </div>
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* MODULE 1: CALL REGISTRATION */}
+      {activeTab === 'callRegistration' && (
+        <CallRegistrationModule
+          currentUser={currentUser}
+          onCallRegistered={(newCall) => {
+            fetchCalls();
+            setActiveTab('callView');
+          }}
+          onCancel={() => setActiveTab('callView')}
+        />
+      )}
+
+      {/* MODULE 11: CALL UPDATE / JOB SHEET */}
+      {activeTab === 'callUpdate' && (
+        <CallUpdateModule
+          currentUser={currentUser}
+          initialCallId={updateCallId}
+          onCallUpdated={() => {
+            fetchCalls();
+          }}
+          onBack={() => {
+            setActiveTab('callView');
+            setUpdateCallId(undefined);
+          }}
+        />
+      )}
+
+      {/* MODULE 17: CALL AUDIT (Dedicated Audit Timeline & Logs) */}
+      {activeTab === 'callAudit' && (
+        <div className="bg-[#1e293b] border border-[#334155] rounded-xl p-6 space-y-6 shadow-xl">
+          <div className="border-b border-[#334155] pb-4">
+            <h3 className="text-base font-bold text-white flex items-center space-x-2">
+              <span>📜 Immutable Call Audit Trail & Historical Transaction Log</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Search by Complaint Number or Call ID to inspect full immutable history of transactions, IP addresses, timestamps, and staff actions.
+            </p>
           </div>
-        )}
 
-        {/* MODE 1: CALL REGISTRATION – REPLICATING OLD CRM ENHANCED WORKFLOW */}
-        {activeTab === 'callRegistration' && (
-          <CallRegistrationModule
-            currentUser={currentUser}
-            onCallRegistered={() => {
-              fetchCalls();
-              setActiveTab('callView');
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleFetchAudit();
             }}
-            onCancel={() => setActiveTab('callView')}
-          />
-        )}
+            className="flex flex-col sm:flex-row gap-3 max-w-xl"
+          >
+            <input
+              type="text"
+              placeholder="Enter Complaint No / Call ID (e.g. 261101UPQS0001)..."
+              value={auditQuery}
+              onChange={(e) => setAuditQuery(e.target.value)}
+              className="flex-1 bg-[#0f172a] border border-[#334155] rounded-lg px-4 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+            />
+            <button
+              type="submit"
+              disabled={auditLoading}
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow"
+            >
+              {auditLoading ? 'Fetching...' : '🔍 Search Audit'}
+            </button>
+          </form>
 
-        {/* MODE 2: CALL UPDATE / JOB SHEET */}
-        {activeTab === 'callUpdate' && (
-          <CallUpdateModule
-            currentUser={currentUser}
-            initialCallId={updateCallId}
-            onCallUpdated={() => {
-              fetchCalls();
-            }}
-            onBack={() => {
-              setActiveTab('callView');
-              setUpdateCallId(undefined);
-            }}
-          />
-        )}
+          {auditCall && (
+            <div className="space-y-6">
+              {/* Call Snapshot Card */}
+              <div className="bg-[#172033] border border-[#334155] rounded-xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                <div>
+                  <span className="text-[10px] uppercase text-slate-400 block font-semibold">Call Number</span>
+                  <span className="text-emerald-400 font-bold font-mono text-sm">{auditCall.callNo}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase text-slate-400 block font-semibold">Customer</span>
+                  <span className="text-white font-medium">{auditCall.customerName} ({auditCall.customerMobile})</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase text-slate-400 block font-semibold">Product</span>
+                  <span className="text-slate-200">{auditCall.brandName} - {auditCall.categoryName}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase text-slate-400 block font-semibold">Current Status</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    {auditCall.callStatus}
+                  </span>
+                </div>
+              </div>
 
-        {/* MODE 3: CALL VIEW / REOPEN / ALLOTMENT */}
-        {activeTab !== 'callRegistration' && activeTab !== 'callUpdate' && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-[#172033] p-3 rounded-xl border border-[#334155]">
-              <div className="flex flex-wrap gap-2">
-                {['ALL', 'OPEN', 'APPOINTMENT', 'ALLOTED', 'PART_PENDING', 'COMPLETED', 'CANCEL', 'REOPENED', 'CLOSED'].map(
-                  (status) => (
-                    <button
-                      key={status}
-                      onClick={() => setFilterStatus(status)}
-                      className={`text-[11px] px-2.5 py-1 rounded font-medium transition ${
-                        filterStatus === status
-                          ? status === 'CLOSED' || status === 'REOPENED'
-                            ? 'bg-amber-600 text-white shadow'
-                            : 'bg-blue-600 text-white shadow'
-                          : 'bg-slate-800 text-slate-400 hover:text-white'
-                      }`}
+              {/* Call History Operational Table */}
+              <div>
+                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider mb-2">
+                  1. Operational Call History (Action, Remark, Timestamp, IP Address, Performed By)
+                </h4>
+                <div className="overflow-x-auto rounded-lg border border-[#334155]">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-[#172033] text-slate-400 uppercase text-[10px] tracking-wider border-b border-[#334155]">
+                      <tr>
+                        <th className="p-3">#</th>
+                        <th className="p-3">Action</th>
+                        <th className="p-3">Remark / Note</th>
+                        <th className="p-3">Transaction Date</th>
+                        <th className="p-3">IP Address</th>
+                        <th className="p-3">Entered By</th>
+                        <th className="p-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#334155]/60 bg-[#0f172a]">
+                      {auditCall.callHistory && auditCall.callHistory.length > 0 ? (
+                        auditCall.callHistory.map((item: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-slate-800/40">
+                            <td className="p-3 font-mono text-slate-500">{idx + 1}</td>
+                            <td className="p-3 font-semibold text-emerald-400">{item.action}</td>
+                            <td className="p-3 text-slate-300 max-w-sm break-words">{item.remark || '—'}</td>
+                            <td className="p-3 font-mono text-slate-400 text-[11px]">
+                              {item.transactionDate ? new Date(item.transactionDate).toLocaleString() : '—'}
+                            </td>
+                            <td className="p-3 font-mono text-slate-400 text-[11px]">{item.ipAddress || '—'}</td>
+                            <td className="p-3 font-medium text-white">{item.enteredBy || 'System'}</td>
+                            <td className="p-3">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
+                                {item.complaintStatus || auditCall.callStatus}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={7} className="p-6 text-center text-slate-500 text-xs">
+                            No operational call history records logged yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* System Audit Logs */}
+              {auditLogs.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider mb-2">
+                    2. Security & RBAC Audit Logs
+                  </h4>
+                  <div className="overflow-x-auto rounded-lg border border-[#334155]">
+                    <table className="w-full text-left text-xs text-slate-300">
+                      <thead className="bg-[#172033] text-slate-400 uppercase text-[10px] tracking-wider border-b border-[#334155]">
+                        <tr>
+                          <th className="p-3">Timestamp</th>
+                          <th className="p-3">Audit Action</th>
+                          <th className="p-3">Performed By</th>
+                          <th className="p-3">IP</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#334155]/60 bg-[#0f172a]">
+                        {auditLogs.map((log: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-slate-800/40">
+                            <td className="p-3 font-mono text-slate-400 text-[11px]">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </td>
+                            <td className="p-3 font-bold text-amber-400">{log.action}</td>
+                            <td className="p-3 text-white font-medium">{log.performedBy || 'Admin'}</td>
+                            <td className="p-3 font-mono text-slate-400 text-[11px]">{log.ipAddress || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ALL OTHER MODULES (TABLE & SEARCH BASED) */}
+      {activeTab !== 'callRegistration' && activeTab !== 'callUpdate' && activeTab !== 'callAudit' && (
+        <div className="space-y-4">
+          {/* MULTI-FIELD SEARCH ACCORDION / FILTER BAR */}
+          <div className="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg space-y-3">
+            <form onSubmit={handleSearchSubmit} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Complaint / Call No</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 261101UPQS0001"
+                    value={searchParams.complaintNo}
+                    onChange={(e) => setSearchParams({ ...searchParams, complaintNo: e.target.value })}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Customer Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Ramesh Kumar"
+                    value={searchParams.customerName}
+                    onChange={(e) => setSearchParams({ ...searchParams, customerName: e.target.value })}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Mobile Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 9876543210"
+                    value={searchParams.mobile}
+                    onChange={(e) => setSearchParams({ ...searchParams, mobile: e.target.value })}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Product Serial No</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SN-88291002"
+                    value={searchParams.serialNo}
+                    onChange={(e) => setSearchParams({ ...searchParams, serialNo: e.target.value })}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+                {(activeTab === 'directCancelPo') ? (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">PO Number</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. PO-88910"
+                      value={searchParams.poNumber}
+                      onChange={(e) => setSearchParams({ ...searchParams, poNumber: e.target.value })}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">Lifecycle Status</label>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                     >
-                      {status === 'CLOSED' ? 'CLOSED (COMPLETED/CANCEL)' : status}
-                    </button>
-                  )
+                      <option value="ALL">ALL STATUSES</option>
+                      <option value="OPEN">OPEN</option>
+                      <option value="APPOINTMENT">APPOINTMENT</option>
+                      <option value="ALLOTED">ALLOTED</option>
+                      <option value="PART_PENDING">PART_PENDING</option>
+                      <option value="COMPLETED">COMPLETED</option>
+                      <option value="CANCEL">CANCEL</option>
+                      <option value="REOPENED">REOPENED</option>
+                      <option value="CLOSED">CLOSED (COMPLETED / CANCEL)</option>
+                    </select>
+                  </div>
                 )}
               </div>
 
-              <input
-                type="text"
-                placeholder="Search Call No / Mobile / City..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-[#0f172a] border border-[#334155] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 w-full sm:w-56"
-              />
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#334155]/60">
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow"
+                  >
+                    <span>🔍 Filter / Search</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-slate-400">Quick Filter:</span>
+                  <input
+                    type="text"
+                    placeholder="Search visible records..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-[#0f172a] border border-[#334155] rounded px-3 py-1 text-xs text-white focus:outline-none focus:border-blue-500 w-48"
+                  />
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* MAIN SERVICE CALLS TABLE */}
+          <div className="bg-[#1e293b] border border-[#334155] rounded-xl overflow-hidden shadow-xl">
+            <div className="p-3.5 bg-[#172033] border-b border-[#334155] flex justify-between items-center">
+              <span className="text-xs font-bold text-white tracking-wider uppercase flex items-center space-x-2">
+                <span>Service Calls Directory</span>
+                <span className="bg-slate-800 text-emerald-400 px-2 py-0.5 rounded-full font-mono text-[10px] border border-slate-700">
+                  {displayedCalls.length} records found
+                </span>
+              </span>
+              <span className="text-[11px] text-slate-400">
+                Click any <strong className="text-emerald-400">Call No</strong> to open comprehensive 11-section complaint view
+              </span>
             </div>
 
-            <div className="overflow-x-auto custom-horizontal-scrollbar rounded-lg border border-[#334155]">
+            <div className="overflow-x-auto custom-horizontal-scrollbar">
               {loading ? (
-                <div className="p-8 text-center text-slate-400 text-xs">Loading service calls...</div>
-              ) : filteredCalls.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 text-xs">No service calls found.</div>
+                <div className="p-12 text-center text-slate-400 text-xs">
+                  <div className="animate-spin text-2xl mb-2">⏳</div>
+                  Loading service calls from database...
+                </div>
+              ) : displayedCalls.length === 0 ? (
+                <div className="p-12 text-center text-slate-400 text-xs">
+                  No service calls found matching the query criteria.
+                </div>
               ) : (
-                <table className="w-full text-left text-xs text-slate-300 min-w-[1200px]">
-                  <thead className="bg-[#172033] text-slate-400 uppercase text-[10px] tracking-wider border-b border-[#334155]">
+                <table className="w-full text-left text-xs text-slate-300 min-w-[1250px]">
+                  <thead className="bg-[#111c2e] text-slate-400 uppercase text-[10px] tracking-wider border-b border-[#334155]">
                     <tr>
                       <th className="p-3 whitespace-nowrap">Call No</th>
-                      <th className="p-3 whitespace-nowrap">Customer</th>
-                      <th className="p-3 whitespace-nowrap">City / PIN</th>
-                      <th className="p-3 whitespace-nowrap">Product / Category</th>
-                      <th className="p-3 whitespace-nowrap">Reported Fault</th>
+                      <th className="p-3 whitespace-nowrap">Reg. Date</th>
+                      <th className="p-3 whitespace-nowrap">Customer Name</th>
+                      <th className="p-3 whitespace-nowrap">Mobile</th>
+                      <th className="p-3 whitespace-nowrap">City / Locality</th>
+                      <th className="p-3 whitespace-nowrap">Brand / Category</th>
+                      <th className="p-3 whitespace-nowrap">Serial Number</th>
                       <th className="p-3 whitespace-nowrap">Technician</th>
                       <th className="p-3 whitespace-nowrap">Status</th>
                       <th className="p-3 whitespace-nowrap text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#334155]/60">
-                    {filteredCalls.map((c) => {
+                  <tbody className="divide-y divide-[#334155]/60 bg-[#1e293b]">
+                    {displayedCalls.map((c) => {
                       const isClosed = c.callStatus === 'COMPLETED' || c.callStatus === 'CANCEL';
                       const isReopened = c.callStatus === 'REOPENED';
+                      const currentSerial = c.unitSerialNumber || c.serialNo || '—';
 
                       return (
                         <tr key={c._id} className="hover:bg-slate-800/40 transition">
-                          <td className="p-3 text-emerald-400 font-mono text-xs font-semibold">
-                            {c.callNo}
+                          <td className="p-3 whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => setDetailModalCall(c)}
+                              className="font-mono font-bold text-emerald-400 hover:text-emerald-300 underline decoration-dotted text-left"
+                              title="Click to view full 11-section complaint view"
+                            >
+                              {c.callNo}
+                            </button>
                             {isReopened && (
-                              <button
-                                onClick={() => setReopenHistoryModalCall(c)}
-                                title="View Reopening Audit Trail"
-                                className="block mt-1 text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-sans hover:bg-amber-500/30"
-                              >
-                                🔄 Reopened ({c.reopenHistory?.length || 1})
-                              </button>
+                              <span className="block mt-0.5 text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 rounded w-fit">
+                                🔄 Reopened
+                              </span>
                             )}
                           </td>
-                          <td className="p-3">
-                            <p className="font-semibold text-white">{c.customerName}</p>
-                            <p className="text-slate-400 text-[11px] font-mono">{c.customerMobile}</p>
+                          <td className="p-3 whitespace-nowrap text-slate-400 font-mono text-[11px]">
+                            {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}
                           </td>
-                          <td className="p-3">
-                            <p className="text-white">{c.city}</p>
-                            <p className="text-slate-500 text-[10px] font-mono">{c.pincode}</p>
+                          <td className="p-3 whitespace-nowrap font-medium text-white">
+                            {c.customerName || '—'}
                           </td>
-                          <td className="p-3">
-                            <p className="text-white font-medium">{c.brandName}</p>
-                            <p className="text-[11px] text-slate-400">{c.categoryName}</p>
+                          <td className="p-3 whitespace-nowrap font-mono text-slate-300">
+                            {c.customerMobile || '—'}
                           </td>
-                          <td className="p-3 text-slate-300 max-w-xs truncate" title={c.reportedFault}>
-                            {c.reportedFault}
+                          <td className="p-3 whitespace-nowrap">
+                            <span className="text-white block">{c.city || '—'}</span>
+                            <span className="text-[10px] text-slate-400">{c.pincode || ''}</span>
                           </td>
-                          <td className="p-3 text-slate-300">{c.technicianName || <span className="text-slate-500">— (Unassigned)</span>}</td>
-                          <td className="p-3">
+                          <td className="p-3 whitespace-nowrap">
+                            <span className="font-semibold text-slate-200 block">{c.brandName || '—'}</span>
+                            <span className="text-[10px] text-slate-400">{c.categoryName || ''}</span>
+                          </td>
+                          <td className="p-3 whitespace-nowrap font-mono text-[11px] text-slate-300">
+                            {currentSerial !== '—' ? (
+                              <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                                {currentSerial}
+                              </span>
+                            ) : (
+                              <span className="text-slate-600">—</span>
+                            )}
+                          </td>
+                          <td className="p-3 whitespace-nowrap">
+                            {c.technicianName ? (
+                              <span className="text-indigo-300 font-medium">{c.technicianName}</span>
+                            ) : (
+                              <span className="text-slate-500 italic text-[11px]">Unassigned</span>
+                            )}
+                          </td>
+                          <td className="p-3 whitespace-nowrap">
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] border font-medium ${
-                                c.callStatus === 'OPEN'
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${c.callStatus === 'OPEN'
                                   ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                                   : c.callStatus === 'ALLOTED'
-                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                  : c.callStatus === 'PART_PENDING'
-                                  ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                                  : c.callStatus === 'COMPLETED'
-                                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
-                                  : c.callStatus === 'REOPENED'
-                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                              }`}
+                                    ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                                    : c.callStatus === 'APPOINTMENT'
+                                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                      : c.callStatus === 'PART_PENDING'
+                                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                        : c.callStatus === 'COMPLETED'
+                                          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                                          : c.callStatus === 'REOPENED'
+                                            ? 'bg-orange-500/20 text-orange-300 border-orange-500/30'
+                                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                }`}
                             >
                               {c.callStatus}
                             </span>
                           </td>
-                          <td className="p-3 text-right">
-                            <div className="flex justify-end gap-1 flex-wrap">
-                              {/* REOPEN ACTION FOR CLOSED CALLS */}
-                              {isClosed && (
-                                <button
-                                  onClick={() => handleTriggerReopen(c)}
-                                  className="text-[11px] px-2.5 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-medium rounded border border-amber-500/30 transition shadow"
-                                >
-                                  🔄 Reopen Call
-                                </button>
-                              )}
-
-                              {!isClosed && (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedCall(c);
-                                      setActionType('allot');
-                                    }}
-                                    className="text-[11px] px-2 py-0.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded border border-indigo-500/20"
-                                  >
-                                    Allot
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedCall(c);
-                                      setActionType('appointment');
-                                    }}
-                                    className="text-[11px] px-2 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded border border-amber-500/20"
-                                  >
-                                    Appoint
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedCall(c);
-                                      setActionType('feedback');
-                                    }}
-                                    className="text-[11px] px-2 py-0.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/20"
-                                  >
-                                    Close
-                                  </button>
-                                </>
-                              )}
-
+                          <td className="p-3 whitespace-nowrap text-right">
+                            <div className="flex items-center justify-end gap-1 flex-wrap">
+                              {/* VIEW ACTION (Opens 11-section complaint view) */}
                               <button
+                                type="button"
+                                onClick={() => setDetailModalCall(c)}
+                                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[11px] font-medium transition"
+                                title="View 11-section complaint view"
+                              >
+                                👁️ View
+                              </button>
+
+                              {/* PRINT ACTION (Opens A4 printable job sheet) */}
+                              <button
+                                type="button"
+                                onClick={() => setPrintModalCall(c)}
+                                className="px-2 py-1 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 rounded text-[11px] font-medium transition border border-indigo-500/20"
+                                title="Print A4 Customer Job Sheet"
+                              >
+                                🖨️ Print
+                              </button>
+
+                              {/* JOB SHEET / UPDATE ACTION */}
+                              <button
+                                type="button"
                                 onClick={() => {
                                   setUpdateCallId(c._id);
                                   setActiveTab('callUpdate');
                                 }}
-                                className="text-[11px] px-2 py-0.5 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 rounded border border-blue-500/30 font-medium"
+                                className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded text-[11px] font-medium transition border border-emerald-500/20"
+                                title="Update Job Sheet, dynamic parts & charges"
                               >
                                 📋 Job Sheet
                               </button>
-                              <button
-                                onClick={() => handleStartEdit(c)}
-                                className="text-[11px] px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteCall(c._id, c.callNo)}
-                                className="text-[11px] px-2 py-0.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded border border-rose-500/20"
-                              >
-                                Delete
-                              </button>
+
+                              {/* MODULE-SPECIFIC QUICK ACTIONS */}
+                              {activeTab === 'callAllotment' && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'allot')}
+                                  className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  👷 Allot Eng.
+                                </button>
+                              )}
+
+                              {activeTab === 'callAppointment' && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'appointment')}
+                                  className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  📅 Appoint
+                                </button>
+                              )}
+
+                              {activeTab === 'callReschedule' && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'reschedule')}
+                                  className="px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  🔄 Reschedule
+                                </button>
+                              )}
+
+                              {activeTab === 'callReminder' && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'reminder')}
+                                  className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  ⏰ Add Reminder
+                                </button>
+                              )}
+
+                              {activeTab === 'callTransfer' && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'transfer')}
+                                  className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  🔀 Transfer
+                                </button>
+                              )}
+
+                              {activeTab === 'callReopen' && isClosed && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'reopen')}
+                                  className="px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  🔓 Reopen Call
+                                </button>
+                              )}
+
+                              {activeTab === 'callCancel' && !isClosed && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'cancel')}
+                                  className="px-2 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  ❌ Cancel Call
+                                </button>
+                              )}
+
+                              {activeTab === 'directCancel' && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'directCancel')}
+                                  className="px-2 py-1 bg-rose-700 hover:bg-rose-600 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  🚫 Direct Cancel
+                                </button>
+                              )}
+
+                              {activeTab === 'directCancelPo' && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'directCancelPo')}
+                                  className="px-2 py-1 bg-rose-800 hover:bg-rose-700 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  📄 Cancel PO
+                                </button>
+                              )}
+
+                              {activeTab === 'callFeedback' && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'feedback')}
+                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  ⭐ Feedback
+                                </button>
+                              )}
+
+                              {activeTab === 'updateSerialNo' && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'updateSerialNo')}
+                                  className="px-2 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  🔢 Update Serial
+                                </button>
+                              )}
+
+                              {activeTab === 'callEdit' && (
+                                <button
+                                  type="button"
+                                  onClick={() => openActionDialog(c, 'edit')}
+                                  className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-[11px] font-bold shadow"
+                                >
+                                  ✏️ Edit
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -791,58 +1103,468 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
               )}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* REOPEN HISTORY AUDIT MODAL */}
-      {reopenHistoryModalCall && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1e293b] border border-[#334155] rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+      {/* COMPREHENSIVE 11-SECTION CALL DETAIL MODAL */}
+      {detailModalCall && (
+        <CallDetailModal
+          call={detailModalCall}
+          onClose={() => setDetailModalCall(null)}
+          onOpenJobSheet={(call) => {
+            setDetailModalCall(null);
+            setUpdateCallId(call._id);
+            setActiveTab('callUpdate');
+          }}
+          onOpenPrint={(call) => {
+            setDetailModalCall(null);
+            setPrintModalCall(call);
+          }}
+        />
+      )}
+
+      {/* JOBSHEET PRINT MODAL */}
+      {printModalCall && (
+        <JobsheetPrintModal
+          call={printModalCall}
+          onClose={() => setPrintModalCall(null)}
+        />
+      )}
+
+      {/* ACTION DIALOG MODAL (Allot, Appointment, Reschedule, Reminder, Reopen, Cancel, Feedback, etc.) */}
+      {actionCall && actionType && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-[#1e293b] border border-[#334155] rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-auto">
             <div className="flex justify-between items-center border-b border-[#334155] pb-3">
-              <h3 className="text-base font-bold text-white flex items-center space-x-2">
-                <span>🔄 Reopening Audit Trail: #{reopenHistoryModalCall.callNo}</span>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+                <span>
+                  {actionType === 'reopen' && '🔓 Reopen Service Call'}
+                  {actionType === 'allot' && '👷 Allot Call to Engineer'}
+                  {actionType === 'appointment' && '📅 Schedule Appointment'}
+                  {actionType === 'reschedule' && '🔄 Reschedule Appointment'}
+                  {actionType === 'reminder' && '⏰ Record Call Reminder'}
+                  {actionType === 'transfer' && '🔀 Transfer Call'}
+                  {actionType === 'cancel' && '❌ Cancel Service Call'}
+                  {actionType === 'directCancel' && '🚫 Direct Cancel Service Call'}
+                  {actionType === 'directCancelPo' && '📄 Direct Cancel Purchase Order (PO)'}
+                  {actionType === 'feedback' && '⭐ Customer Feedback Entry'}
+                  {actionType === 'updateSerialNo' && '🔢 Update Appliance Serial Number'}
+                  {actionType === 'edit' && '✏️ Edit Service Call Details'}
+                </span>
+                <span className="font-mono text-emerald-400">#{actionCall.callNo}</span>
               </h3>
               <button
-                onClick={() => setReopenHistoryModalCall(null)}
-                className="text-slate-400 hover:text-white text-xs"
+                type="button"
+                onClick={() => {
+                  setActionCall(null);
+                  setActionType(null);
+                }}
+                className="text-slate-400 hover:text-white text-sm"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3">
-              {reopenHistoryModalCall.reopenHistory && reopenHistoryModalCall.reopenHistory.length > 0 ? (
-                reopenHistoryModalCall.reopenHistory.map((h: any, idx: number) => (
-                  <div key={idx} className="bg-[#172033] p-3 rounded-lg border border-[#334155] text-xs space-y-1">
-                    <div className="flex justify-between text-slate-400">
-                      <span>
-                        Reopened by: <strong className="text-white">{h.reopenedBy}</strong>
-                      </span>
-                      <span>{new Date(h.reopenedAt).toLocaleString()}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Previous Status: </span>
-                      <span className="text-rose-400 font-medium">{h.previousStatus}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Mandatory Reason: </span>
-                      <p className="text-amber-300 mt-0.5 font-medium bg-[#111c2e] p-2 rounded border border-[#334155]/60">
-                        "{h.reason}"
-                      </p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-4 text-xs text-slate-400">No reopen history records found.</div>
-              )}
+            {/* Quick Call Summary Banner */}
+            <div className="bg-[#0f172a] p-3 rounded-lg border border-[#334155] grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-slate-500 text-[10px] block">Customer</span>
+                <span className="text-white font-semibold">{actionCall.customerName}</span>
+                <span className="text-slate-400 block font-mono text-[11px]">{actionCall.customerMobile}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 text-[10px] block">Product</span>
+                <span className="text-slate-200">{actionCall.brandName} - {actionCall.categoryName}</span>
+                <span className="text-blue-400 block text-[10px] font-semibold">{actionCall.callStatus}</span>
+              </div>
             </div>
 
-            <div className="flex justify-end pt-3 border-t border-[#334155]">
+            {/* ACTION-SPECIFIC FIELDS */}
+            {actionType === 'reopen' && (
+              <div className="space-y-3">
+                <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded text-[11px] text-amber-300">
+                  ⚠️ <strong>Mandatory Business Requirement:</strong> A detailed justification must be provided for reopening closed or cancelled service calls.
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">
+                    Reopening Reason / Justification *
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    placeholder="Enter explicit reason (e.g., Customer called back saying cooling problem re-occurred, part was defective, visit requested)..."
+                    value={actionInput}
+                    onChange={(e) => setActionInput(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {(actionType === 'appointment' || actionType === 'reschedule') && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-200 mb-1">Appointment Date *</label>
+                    <input
+                      type="date"
+                      value={actionDate}
+                      onChange={(e) => setActionDate(e.target.value)}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-200 mb-1">Time Slot / Time *</label>
+                    <select
+                      value={actionTime}
+                      onChange={(e) => setActionTime(e.target.value)}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="09:00 AM - 11:00 AM">09:00 AM - 11:00 AM</option>
+                      <option value="11:00 AM - 01:00 PM">11:00 AM - 01:00 PM</option>
+                      <option value="01:00 PM - 03:00 PM">01:00 PM - 03:00 PM</option>
+                      <option value="03:00 PM - 05:00 PM">03:00 PM - 05:00 PM</option>
+                      <option value="05:00 PM - 07:00 PM">05:00 PM - 07:00 PM</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">
+                    {actionType === 'reschedule' ? 'Reason for Rescheduling' : 'Appointment Remarks'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Customer requested evening slot / technician reassigned"
+                    value={actionInput}
+                    onChange={(e) => setActionInput(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {actionType === 'allot' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">Assign Service Technician *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. PRASHANT GUPTA"
+                    value={actionInput}
+                    onChange={(e) => setActionInput(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">Allotment Remarks</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Immediate high-priority visit assigned"
+                    value={actionInput2}
+                    onChange={(e) => setActionInput2(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {actionType === 'transfer' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">Transfer To Engineer *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SANJAY SHARMA"
+                    value={actionInput}
+                    onChange={(e) => setActionInput(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">Transfer To Service Branch / ASC</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. GHAZIABAD MAIN BRANCH"
+                    value={actionInput2}
+                    onChange={(e) => setActionInput2(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {actionType === 'reminder' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">Talk To Whom</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Customer / Representative"
+                    value={actionInput2}
+                    onChange={(e) => setActionInput2(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">Reminder Notes / Remarks *</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Enter call notes or reminder details..."
+                    value={actionInput}
+                    onChange={(e) => setActionInput(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {(actionType === 'cancel' || actionType === 'directCancel') && (
+              <div className="space-y-3">
+                <div className="bg-rose-500/10 border border-rose-500/30 p-2.5 rounded text-[11px] text-rose-300">
+                  ⚠️ This action will immediately mark the service ticket as <strong>CANCELLED</strong>.
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">Cancellation Reason *</label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Customer cancelled service request / Product already repaired / Outside service area..."
+                    value={actionInput}
+                    onChange={(e) => setActionInput(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-rose-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {actionType === 'directCancelPo' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">PO Number *</label>
+                  <input
+                    type="text"
+                    value={actionInput}
+                    onChange={(e) => setActionInput(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-rose-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">PO Cancellation Reason *</label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Spare part not required, supplier cancelled, or wrong PO generated..."
+                    value={actionInput2}
+                    onChange={(e) => setActionInput2(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-rose-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {actionType === 'feedback' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">Customer Rating (1 to 5 Stars)</label>
+                  <div className="flex items-center space-x-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setActionRating(star)}
+                        className={`text-2xl transition ${star <= actionRating ? 'text-amber-400 scale-110' : 'text-slate-600'}`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                    <span className="text-xs text-slate-300 font-bold ml-2">({actionRating} / 5)</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">Customer Comments / Feedback</label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Customer expressed high satisfaction with on-time cooling repair..."
+                    value={actionInput}
+                    onChange={(e) => setActionInput(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {actionType === 'updateSerialNo' && (
+              <div className="space-y-3">
+                <div>
+                  <span className="text-xs text-slate-400 block mb-0.5">Existing Serial Number:</span>
+                  <span className="font-mono text-xs text-emerald-400 bg-[#0f172a] px-2 py-1 rounded border border-[#334155] block">
+                    {actionCall.unitSerialNumber || actionCall.serialNo || 'None'}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">New Serial Number *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SN-99882201"
+                    value={actionInput}
+                    onChange={(e) => setActionInput(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">Update Justification / Reason</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Set serial was misprinted during initial intake"
+                    value={actionInput2}
+                    onChange={(e) => setActionInput2(e.target.value)}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {actionType === 'edit' && (
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-0.5">Customer Name</label>
+                    <input
+                      type="text"
+                      value={editCallData.customerName || ''}
+                      onChange={(e) => setEditCallData({ ...editCallData, customerName: e.target.value })}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-0.5">Customer Mobile</label>
+                    <input
+                      type="text"
+                      value={editCallData.customerMobile || ''}
+                      onChange={(e) => setEditCallData({ ...editCallData, customerMobile: e.target.value })}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white font-mono"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-0.5">Address</label>
+                  <input
+                    type="text"
+                    value={editCallData.customerAddress || ''}
+                    onChange={(e) => setEditCallData({ ...editCallData, customerAddress: e.target.value })}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-0.5">City</label>
+                    <input
+                      type="text"
+                      value={editCallData.city || ''}
+                      onChange={(e) => setEditCallData({ ...editCallData, city: e.target.value })}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-0.5">State</label>
+                    <input
+                      type="text"
+                      value={editCallData.state || ''}
+                      onChange={(e) => setEditCallData({ ...editCallData, state: e.target.value })}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-0.5">PIN Code</label>
+                    <input
+                      type="text"
+                      value={editCallData.pincode || ''}
+                      onChange={(e) => setEditCallData({ ...editCallData, pincode: e.target.value })}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white font-mono"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-0.5">Brand</label>
+                    <input
+                      type="text"
+                      value={editCallData.brandName || ''}
+                      onChange={(e) => setEditCallData({ ...editCallData, brandName: e.target.value })}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-0.5">Category</label>
+                    <input
+                      type="text"
+                      value={editCallData.categoryName || ''}
+                      onChange={(e) => setEditCallData({ ...editCallData, categoryName: e.target.value })}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-0.5">Serial No</label>
+                    <input
+                      type="text"
+                      value={editCallData.serialNo || ''}
+                      onChange={(e) => setEditCallData({ ...editCallData, serialNo: e.target.value })}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-0.5">Call Status</label>
+                    <select
+                      value={editCallData.callStatus || 'OPEN'}
+                      onChange={(e) => setEditCallData({ ...editCallData, callStatus: e.target.value })}
+                      className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
+                    >
+                      <option value="OPEN">OPEN</option>
+                      <option value="APPOINTMENT">APPOINTMENT</option>
+                      <option value="ALLOTED">ALLOTED</option>
+                      <option value="PART_PENDING">PART_PENDING</option>
+                      <option value="COMPLETED">COMPLETED</option>
+                      <option value="CANCEL">CANCEL</option>
+                      <option value="REOPENED">REOPENED</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-0.5">Reported Fault</label>
+                  <textarea
+                    rows={2}
+                    value={editCallData.reportedFault || ''}
+                    onChange={(e) => setEditCallData({ ...editCallData, reportedFault: e.target.value })}
+                    className="w-full bg-[#0f172a] border border-[#334155] rounded px-3 py-1.5 text-xs text-white"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ACTION FOOTER */}
+            <div className="flex justify-end space-x-2 pt-3 border-t border-[#334155]">
               <button
-                onClick={() => setReopenHistoryModalCall(null)}
-                className="px-4 py-2 text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition"
+                type="button"
+                onClick={() => {
+                  setActionCall(null);
+                  setActionType(null);
+                }}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition"
               >
-                Close
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteAction}
+                disabled={actionSaving}
+                className={`px-5 py-2 rounded text-xs font-bold text-white shadow transition ${actionType === 'reopen'
+                    ? 'bg-amber-600 hover:bg-amber-500'
+                    : actionType === 'cancel' || actionType === 'directCancel' || actionType === 'directCancelPo'
+                      ? 'bg-rose-600 hover:bg-rose-500'
+                      : 'bg-emerald-600 hover:bg-emerald-500'
+                  }`}
+              >
+                {actionSaving ? 'Executing...' : 'Confirm & Save'}
               </button>
             </div>
           </div>

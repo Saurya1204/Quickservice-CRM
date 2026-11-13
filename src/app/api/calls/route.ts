@@ -20,8 +20,19 @@ export async function GET(req: Request) {
     const mobile = searchParams.get('mobile');
     const complaintNo = searchParams.get('complaintNo');
     const serialNo = searchParams.get('serialNo');
+    const poNumber = searchParams.get('poNumber');
+    const callId = searchParams.get('id');
 
     const query: any = {};
+
+    if (callId) {
+      const singleCall = await ServiceCall.findById(callId).lean();
+      return NextResponse.json({ success: true, data: singleCall });
+    }
+
+    if (poNumber && poNumber.trim()) {
+      query.poNumber = { $regex: poNumber.trim(), $options: 'i' };
+    }
 
     if (status && status !== 'ALL') {
       if (status === 'ACTIVE') {
@@ -201,6 +212,19 @@ export async function POST(req: Request) {
       });
     }
 
+    // Initialize Call History
+    if (!body.callHistory || body.callHistory.length === 0) {
+      body.callHistory = [
+        {
+          action: 'Call Registration',
+          remark: `Call registered with initial status ${body.callStatus || 'OPEN'}`,
+          transactionDate: new Date(),
+          enteredBy: body.registeredBy || body.createdBy || 'Call Coordinator',
+          complaintStatus: body.callStatus || 'OPEN',
+        },
+      ];
+    }
+
     let newCall;
     try {
       newCall = await ServiceCall.create(body);
@@ -246,16 +270,20 @@ export async function PUT(req: Request) {
     }
 
     // Support reopen in PUT directly
+    const performedBy = body.performedBy || body.updatedBy || body.reopenedBy || 'Super Admin';
+    const clientIp = req.headers.get('x-forwarded-for') || '';
+
+    const existingCallForUpdate = await ServiceCall.findById(id).select('+invoiceFile.fileData +defectivePartImages.fileData');
+    if (!existingCallForUpdate) {
+      return NextResponse.json({ success: false, message: 'Call not found' }, { status: 404 });
+    }
+
     if (action === 'reopen') {
       if (!reopenReason || !reopenReason.trim()) {
         return NextResponse.json(
           { success: false, message: 'Reopening Reason is required' },
           { status: 400 }
         );
-      }
-      const existingCall = await ServiceCall.findById(id);
-      if (!existingCall) {
-        return NextResponse.json({ success: false, message: 'Call not found' }, { status: 404 });
       }
 
       const updated = await ServiceCall.findByIdAndUpdate(
@@ -264,10 +292,19 @@ export async function PUT(req: Request) {
           $set: { callStatus: 'REOPENED', daysPending: 0 },
           $push: {
             reopenHistory: {
-              reopenedBy: reopenedBy || 'Authorized Officer',
+              reopenedBy: performedBy,
               reopenedAt: new Date(),
               reason: reopenReason.trim(),
-              previousStatus: existingCall.callStatus,
+              previousStatus: existingCallForUpdate.callStatus,
+            },
+            callHistory: {
+              action: 'Call Reopen',
+              remark: reopenReason.trim(),
+              transactionDate: new Date(),
+              ipAddress: clientIp,
+              enteredBy: performedBy,
+              complaintStatus: 'REOPENED',
+              previousStatus: existingCallForUpdate.callStatus,
             },
           },
         },
@@ -278,26 +315,401 @@ export async function PUT(req: Request) {
         action: 'REOPEN_CALL',
         module: 'callManagement',
         entityId: id,
-        entityName: `Call #${existingCall.callNo}`,
-        performedBy: reopenedBy || 'Authorized Officer',
+        entityName: `Call #${existingCallForUpdate.callNo}`,
+        performedBy,
+        ipAddress: clientIp,
         details: { reason: reopenReason },
       });
 
       return NextResponse.json({
         success: true,
         data: updated,
-        message: `Call #${existingCall.callNo} reopened successfully!`,
+        message: `Call #${existingCallForUpdate.callNo} reopened successfully!`,
       });
+    }
+
+    // Action: Appointment & Reschedule
+    if (action === 'appointment' || action === 'reschedule') {
+      const appDate = body.appointmentDate ? new Date(body.appointmentDate) : new Date();
+      const appTime = body.appointmentTime || '10:00 AM';
+      const remarks = body.remarks || (action === 'reschedule' ? 'Appointment rescheduled' : 'Appointment scheduled');
+      const actionTitle = action === 'reschedule' ? 'Call Reschedule' : 'Call Appointment';
+
+      const updated = await ServiceCall.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            appointmentDate: appDate,
+            appointmentTime: appTime,
+            callStatus: 'APPOINTMENT',
+          },
+          $push: {
+            appointmentHistory: {
+              appointmentDate: appDate,
+              appointmentTime: appTime,
+              remarks,
+              scheduledBy: performedBy,
+              scheduledAt: new Date(),
+              status: 'APPOINTMENT',
+            },
+            callHistory: {
+              action: actionTitle,
+              remark: `${remarks} for ${appDate.toISOString().split('T')[0]} at ${appTime}`,
+              transactionDate: new Date(),
+              ipAddress: clientIp,
+              enteredBy: performedBy,
+              complaintStatus: 'APPOINTMENT',
+              previousStatus: existingCallForUpdate.callStatus,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      await AuditLog.create({
+        action: actionTitle.toUpperCase().replace(/\s+/g, '_'),
+        module: 'callManagement',
+        entityId: id,
+        entityName: `Call #${existingCallForUpdate.callNo}`,
+        performedBy,
+        ipAddress: clientIp,
+        details: { appointmentDate: appDate, appointmentTime: appTime, remarks },
+      }).catch(() => null);
+
+      return NextResponse.json({ success: true, data: updated, message: `${actionTitle} saved successfully!` });
+    }
+
+    // Action: Allot To Engineer
+    if (action === 'allot') {
+      const technicianName = body.technicianName || body.actionInput;
+      if (!technicianName) {
+        return NextResponse.json({ success: false, message: 'Technician Name is required for allotment' }, { status: 400 });
+      }
+
+      const updated = await ServiceCall.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            technicianName,
+            callStatus: 'ALLOTED',
+          },
+          $push: {
+            callHistory: {
+              action: 'Allot To Eng.',
+              remark: body.remarks || `Call allotted to engineer ${technicianName}`,
+              transactionDate: new Date(),
+              ipAddress: clientIp,
+              enteredBy: performedBy,
+              complaintStatus: 'ALLOTED',
+              previousStatus: existingCallForUpdate.callStatus,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      await AuditLog.create({
+        action: 'CALL_ALLOTMENT',
+        module: 'callManagement',
+        entityId: id,
+        entityName: `Call #${existingCallForUpdate.callNo}`,
+        performedBy,
+        ipAddress: clientIp,
+        details: { technicianName, remarks: body.remarks },
+      }).catch(() => null);
+
+      return NextResponse.json({ success: true, data: updated, message: `Call allotted to ${technicianName} successfully!` });
+    }
+
+    // Action: Transfer Call
+    if (action === 'transfer') {
+      const toEngineer = body.toEngineer || body.actionInput;
+      const toBranch = body.toBranch || body.branch;
+      const transferRemarks = body.remarks || body.transferRemarks || `Transferred to ${toEngineer}`;
+
+      const updated = await ServiceCall.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            technicianName: toEngineer,
+            ...(toBranch ? { branch: toBranch } : {}),
+          },
+          $push: {
+            transferHistory: {
+              fromEngineer: existingCallForUpdate.technicianName || '',
+              toEngineer,
+              fromTeam: existingCallForUpdate.branch || '',
+              toTeam: toBranch || '',
+              remarks: transferRemarks,
+              transferredBy: performedBy,
+              transferredAt: new Date(),
+            },
+            callHistory: {
+              action: 'Call Transfer',
+              remark: transferRemarks,
+              transactionDate: new Date(),
+              ipAddress: clientIp,
+              enteredBy: performedBy,
+              complaintStatus: existingCallForUpdate.callStatus,
+              previousStatus: existingCallForUpdate.callStatus,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      await AuditLog.create({
+        action: 'CALL_TRANSFER',
+        module: 'callManagement',
+        entityId: id,
+        entityName: `Call #${existingCallForUpdate.callNo}`,
+        performedBy,
+        ipAddress: clientIp,
+        details: { from: existingCallForUpdate.technicianName, to: toEngineer, remarks: transferRemarks },
+      }).catch(() => null);
+
+      return NextResponse.json({ success: true, data: updated, message: `Call transferred to ${toEngineer} successfully!` });
+    }
+
+    // Action: Cancel & Direct Cancel
+    if (action === 'cancel' || action === 'directCancel') {
+      const reason = body.reason || body.remarks || body.cancellationReason || 'Direct Cancel';
+      const actionName = action === 'directCancel' ? 'Direct Cancel' : 'Call Cancel';
+
+      const updated = await ServiceCall.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            callStatus: 'CANCEL',
+            cancelledDate: new Date(),
+            cancellationReason: reason,
+            cancelRemarks: reason,
+            cancelledBy: performedBy,
+          },
+          $push: {
+            callHistory: {
+              action: actionName,
+              remark: reason,
+              transactionDate: new Date(),
+              ipAddress: clientIp,
+              enteredBy: performedBy,
+              complaintStatus: 'CANCEL',
+              previousStatus: existingCallForUpdate.callStatus,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      await AuditLog.create({
+        action: action === 'directCancel' ? 'DIRECT_CANCEL' : 'CALL_CANCEL',
+        module: 'callManagement',
+        entityId: id,
+        entityName: `Call #${existingCallForUpdate.callNo}`,
+        performedBy,
+        ipAddress: clientIp,
+        details: { reason },
+      }).catch(() => null);
+
+      return NextResponse.json({ success: true, data: updated, message: `Call #${existingCallForUpdate.callNo} cancelled successfully!` });
+    }
+
+    // Action: Direct Cancel PO
+    if (action === 'directCancelPo') {
+      const reason = body.reason || body.remarks || 'Purchase Order Cancelled';
+      const updated = await ServiceCall.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            poStatus: 'CANCEL',
+            poCancellationReason: reason,
+            poCancelledBy: performedBy,
+            poCancelledAt: new Date(),
+          },
+          $push: {
+            callHistory: {
+              action: 'Direct Cancel PO',
+              remark: `PO #${existingCallForUpdate.poNumber || existingCallForUpdate.purchaseOrderNo || id} cancelled: ${reason}`,
+              transactionDate: new Date(),
+              ipAddress: clientIp,
+              enteredBy: performedBy,
+              complaintStatus: existingCallForUpdate.callStatus,
+              previousStatus: existingCallForUpdate.callStatus,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      await AuditLog.create({
+        action: 'DIRECT_CANCEL_PO',
+        module: 'callManagement',
+        entityId: id,
+        entityName: `Call #${existingCallForUpdate.callNo}`,
+        performedBy,
+        ipAddress: clientIp,
+        details: { reason },
+      }).catch(() => null);
+
+      return NextResponse.json({ success: true, data: updated, message: `Purchase Order cancelled successfully!` });
+    }
+
+    // Action: Call Reminder
+    if (action === 'reminder') {
+      const remDate = body.reminderDate ? new Date(body.reminderDate) : new Date();
+      const remTime = body.reminderTime || '10:00 AM';
+      const remRemarks = body.remarks || 'Customer follow-up reminder';
+
+      const updated = await ServiceCall.findByIdAndUpdate(
+        id,
+        {
+          $push: {
+            reminders: {
+              reminderDate: remDate,
+              reminderTime: remTime,
+              remarks: remRemarks,
+              scheduledBy: performedBy,
+              scheduledAt: new Date(),
+              status: 'PENDING',
+            },
+            callHistory: {
+              action: 'Call Reminder',
+              remark: `${remRemarks} (Scheduled for ${remDate.toISOString().split('T')[0]} ${remTime})`,
+              transactionDate: new Date(),
+              ipAddress: clientIp,
+              enteredBy: performedBy,
+              complaintStatus: existingCallForUpdate.callStatus,
+              previousStatus: existingCallForUpdate.callStatus,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      return NextResponse.json({ success: true, data: updated, message: `Reminder scheduled successfully!` });
+    }
+
+    // Action: Call Feedback
+    if (action === 'feedback') {
+      const rating = Number(body.rating) || 5;
+      const feedbackRemarks = body.remarks || body.customerRemarks || 'Satisfactory service';
+
+      const updated = await ServiceCall.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            feedback: {
+              rating,
+              customerRemarks: feedbackRemarks,
+              collectedBy: performedBy,
+              collectedAt: new Date(),
+            },
+            callStatus: 'COMPLETED',
+          },
+          $push: {
+            callHistory: {
+              action: 'Call Feedback',
+              remark: `Rating: ${rating}/5. Remarks: ${feedbackRemarks}`,
+              transactionDate: new Date(),
+              ipAddress: clientIp,
+              enteredBy: performedBy,
+              complaintStatus: 'COMPLETED',
+              previousStatus: existingCallForUpdate.callStatus,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      return NextResponse.json({ success: true, data: updated, message: `Customer feedback recorded successfully!` });
+    }
+
+    // Action: Update Serial No.
+    if (action === 'updateSerialNo') {
+      const newSerialNo = (body.newSerialNo || body.serialNo || '').trim();
+      if (!newSerialNo) {
+        return NextResponse.json({ success: false, message: 'New Serial Number is required.' }, { status: 400 });
+      }
+
+      const oldSerialNo = existingCallForUpdate.serialNo || '';
+      const remarks = body.remarks || `Serial number updated from "${oldSerialNo}" to "${newSerialNo}"`;
+
+      const updated = await ServiceCall.findByIdAndUpdate(
+        id,
+        {
+          $set: { serialNo: newSerialNo },
+          $push: {
+            serialNoHistory: {
+              oldSerialNo,
+              newSerialNo,
+              changedBy: performedBy,
+              changedAt: new Date(),
+              remarks,
+            },
+            callHistory: {
+              action: 'Serial Number Update',
+              remark: remarks,
+              transactionDate: new Date(),
+              ipAddress: clientIp,
+              enteredBy: performedBy,
+              complaintStatus: existingCallForUpdate.callStatus,
+              previousStatus: existingCallForUpdate.callStatus,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      await AuditLog.create({
+        action: 'UPDATE_SERIAL_NO',
+        module: 'callManagement',
+        entityId: id,
+        entityName: `Call #${existingCallForUpdate.callNo}`,
+        performedBy,
+        ipAddress: clientIp,
+        details: { oldSerialNo, newSerialNo, remarks },
+      }).catch(() => null);
+
+      return NextResponse.json({ success: true, data: updated, message: `Serial Number updated successfully to "${newSerialNo}"!` });
+    }
+
+    // Action: Call Edit
+    if (action === 'edit') {
+      const editRemarks = body.remarks || 'Customer / Product details updated';
+      const updated = await ServiceCall.findByIdAndUpdate(
+        id,
+        {
+          $set: updateData,
+          $push: {
+            callHistory: {
+              action: 'Call Edit',
+              remark: editRemarks,
+              transactionDate: new Date(),
+              ipAddress: clientIp,
+              enteredBy: performedBy,
+              complaintStatus: updateData.callStatus || existingCallForUpdate.callStatus,
+              previousStatus: existingCallForUpdate.callStatus,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      await AuditLog.create({
+        action: 'CALL_EDIT',
+        module: 'callManagement',
+        entityId: id,
+        entityName: `Call #${existingCallForUpdate.callNo}`,
+        performedBy,
+        ipAddress: clientIp,
+        details: { changedFields: Object.keys(updateData) },
+      }).catch(() => null);
+
+      return NextResponse.json({ success: true, data: updated, message: 'Call details updated successfully!' });
     }
 
     // Preserve Call ID integrity: Call ID must remain unchanged when editing an existing call
     delete updateData.callNo;
-
-    // Validate mandatory conditions if updating to PART_PENDING or full Call Update
-    const existingCallForUpdate = await ServiceCall.findById(id).select('+invoiceFile.fileData +defectivePartImages.fileData');
-    if (!existingCallForUpdate) {
-      return NextResponse.json({ success: false, message: 'Call not found' }, { status: 404 });
-    }
 
     const targetStatus = (updateData.callStatus || updateData.presentStatus || existingCallForUpdate.callStatus || '').toUpperCase();
 

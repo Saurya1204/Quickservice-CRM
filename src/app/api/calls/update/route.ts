@@ -295,12 +295,74 @@ export async function POST(req: Request) {
       updatePayload.completedDate = new Date();
     }
 
-    // Append to visit history
+    // Append to visit history and call history
+    const historyItem = {
+      action: targetStatus === 'PART_PENDING' ? 'Part Pending Update' : 'Call Update',
+      remark: updateData.jobDetails || `Job Sheet updated with status: ${targetStatus}`,
+      transactionDate: new Date(),
+      ipAddress: req.headers.get('x-forwarded-for') || '',
+      enteredBy: updateData.updatedBy || updateData.technicianName || 'Super Admin',
+      complaintStatus: targetStatus,
+      previousStatus: existingCall.callStatus,
+    };
+
+    // Work done record
+    const workRecord = updateData.jobDetails
+      ? {
+          workDone: updateData.jobDetails,
+          symptom: updateData.symptomObserved || updateData.symptomRegistered || '',
+          cause: updateData.cause || '',
+          analysis: updateData.analysis || '',
+          recordedDate: new Date(),
+          recordedBy: updateData.technicianName || updateData.updatedBy || 'Technician',
+        }
+      : null;
+
+    // Pending parts mapping
+    if (updateData.pendingParts) {
+      updatePayload.pendingParts = updateData.pendingParts;
+    } else if (targetStatus === 'PART_PENDING' && Array.isArray(updateData.requiredParts)) {
+      updatePayload.pendingParts = updateData.requiredParts.map((p: any) => ({
+        partName: p.partName,
+        partCode: p.partCode || '',
+        quantity: p.quantity || 1,
+        unitSerialNumber: updateData.unitSerialNumber || serialNo,
+        pendingReason: updateData.jobDetails || 'Awaiting part delivery',
+        invoiceCopyUrl: newInvoiceAttachment?.fileUrl || existingCall.invoiceFile?.fileUrl,
+        defectiveImageUrl: newDefectiveAttachments[0]?.fileUrl || existingCall.defectivePartImages?.[0]?.fileUrl,
+        pendingDate: new Date(),
+        pendingStatus: 'PART_PENDING',
+      }));
+    }
+
+    // Consumed parts mapping
+    if (updateData.consumedParts) {
+      updatePayload.consumedParts = updateData.consumedParts;
+    } else if (targetStatus === 'COMPLETED' && Array.isArray(updateData.requiredParts)) {
+      updatePayload.consumedParts = updateData.requiredParts.map((p: any) => ({
+        partName: p.partName,
+        partCode: p.partCode || '',
+        consumedQuantity: p.quantity || 1,
+        partSerialNumber: serialNo,
+        consumptionDate: new Date(),
+        engineerName: updateData.engineerName || existingCall.technicianName || '',
+        relatedCallId: existingCall.callNo,
+      }));
+    }
+
+    const pushOps: any = {
+      visitHistory: visitDetailsObj,
+      callHistory: historyItem,
+    };
+    if (workRecord) {
+      pushOps.workDoneRecords = workRecord;
+    }
+
     const updated = await ServiceCall.findByIdAndUpdate(
       callId,
       {
         $set: updatePayload,
-        $push: { visitHistory: visitDetailsObj },
+        $push: pushOps,
       },
       { new: true }
     );
@@ -331,3 +393,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
+

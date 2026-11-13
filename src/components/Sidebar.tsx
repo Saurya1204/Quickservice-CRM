@@ -436,6 +436,21 @@ export default function Sidebar({
                       Jobsheet Print
                     </button>
                   )}
+                  {canAccess('callManagement', 'directCancel') && (
+                    <button onClick={() => handleItemClick('directCancel')} className={itemClass('directCancel')}>
+                      Direct Cancel
+                    </button>
+                  )}
+                  {canAccess('callManagement', 'directCancelPo') && (
+                    <button onClick={() => handleItemClick('directCancelPo')} className={itemClass('directCancelPo')}>
+                      Direct Cancel PO
+                    </button>
+                  )}
+                  {canAccess('callManagement', 'updateSerialNo') && (
+                    <button onClick={() => handleItemClick('updateSerialNo')} className={itemClass('updateSerialNo')}>
+                      Update Serial No.
+                    </button>
+                  )}
                   {canAccess('callManagement', 'callAudit') && (
                     <button onClick={() => handleItemClick('callAudit')} className={itemClass('callAudit')}>
                       Call Audit

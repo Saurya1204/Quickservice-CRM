@@ -50,6 +50,90 @@ export interface IVisitDetails {
   updatedAt?: Date;
 }
 
+export interface ICallHistoryItem {
+  action: string;
+  remark: string;
+  transactionDate: Date;
+  ipAddress?: string;
+  enteredBy: string;
+  complaintStatus: string;
+  previousStatus?: string;
+}
+
+export interface IReminderItem {
+  reminderDate: Date;
+  reminderTime?: string;
+  remarks: string;
+  scheduledBy: string;
+  scheduledAt: Date;
+  status: string;
+}
+
+export interface IAppointmentHistoryItem {
+  appointmentDate: Date;
+  appointmentTime?: string;
+  remarks?: string;
+  scheduledBy: string;
+  scheduledAt: Date;
+  status?: string;
+}
+
+export interface ITransferHistoryItem {
+  fromEngineer?: string;
+  toEngineer: string;
+  fromTeam?: string;
+  toTeam?: string;
+  remarks: string;
+  transferredBy: string;
+  transferredAt: Date;
+}
+
+export interface ICallFeedback {
+  rating: number;
+  customerRemarks: string;
+  collectedBy: string;
+  collectedAt: Date;
+}
+
+export interface IPendingPart {
+  partName: string;
+  partCode: string;
+  quantity: number;
+  unitSerialNumber?: string;
+  pendingReason: string;
+  invoiceCopyUrl?: string;
+  defectiveImageUrl?: string;
+  pendingDate: Date;
+  pendingStatus: string;
+}
+
+export interface IConsumedPart {
+  partName: string;
+  partCode: string;
+  consumedQuantity: number;
+  partSerialNumber?: string;
+  consumptionDate: Date;
+  engineerName: string;
+  relatedCallId?: string;
+}
+
+export interface IWorkDoneRecord {
+  workDone: string;
+  symptom?: string;
+  cause?: string;
+  analysis?: string;
+  recordedDate: Date;
+  recordedBy: string;
+}
+
+export interface ISerialNoHistoryItem {
+  oldSerialNo: string;
+  newSerialNo: string;
+  changedBy: string;
+  changedAt: Date;
+  remarks: string;
+}
+
 export interface IServiceCall extends Document {
   callNo: string;
   customerName: string;
@@ -140,6 +224,26 @@ export interface IServiceCall extends Document {
 
   // Job Sheet / Call Update fields
   locality?: string;
+  alternateMobile?: string;
+  customerAddress2?: string;
+  stdCode?: string;
+  residencePhone?: string;
+  officePhone?: string;
+  customerLanguage?: string;
+  contractDetails?: string;
+  callBy?: string;
+  complaintType?: string;
+  complaintCategory?: string;
+  ascName?: string;
+  talkToWhom?: string;
+  cancelRemarks?: string;
+  appointmentTime?: string;
+  poNumber?: string;
+  poStatus?: string;
+  poCancellationReason?: string;
+  poCancelledBy?: string;
+  poCancelledAt?: Date;
+
   invoiceFile?: ICallAttachment;
   defectivePartImages?: ICallAttachment[];
   jobDetails?: string;
@@ -152,6 +256,17 @@ export interface IServiceCall extends Document {
   charges?: ICallCharges;
   visitDetails?: IVisitDetails;
   visitHistory?: IVisitDetails[];
+
+  // Operational Timeline & Detailed Arrays
+  callHistory?: ICallHistoryItem[];
+  reminders?: IReminderItem[];
+  appointmentHistory?: IAppointmentHistoryItem[];
+  transferHistory?: ITransferHistoryItem[];
+  feedback?: ICallFeedback;
+  pendingParts?: IPendingPart[];
+  consumedParts?: IConsumedPart[];
+  workDoneRecords?: IWorkDoneRecord[];
+  serialNoHistory?: ISerialNoHistoryItem[];
 
   callStatus: 'OPEN' | 'APPOINTMENT' | 'ALLOTED' | 'PART_PENDING' | 'COMPLETED' | 'CANCEL' | 'REOPENED';
   appointmentDate?: Date;
@@ -222,6 +337,117 @@ const ReopenRecordSchema = new Schema<IReopenRecord>(
     reopenedAt: { type: Date, default: Date.now },
     reason: { type: String, required: true },
     previousStatus: { type: String, required: true },
+  },
+  { _id: false }
+);
+
+const CallHistorySchema = new Schema<ICallHistoryItem>(
+  {
+    action: { type: String, required: true },
+    remark: { type: String, default: '' },
+    transactionDate: { type: Date, default: Date.now },
+    ipAddress: { type: String, default: '' },
+    enteredBy: { type: String, default: 'System' },
+    complaintStatus: { type: String, default: 'OPEN' },
+    previousStatus: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
+const ReminderSchema = new Schema<IReminderItem>(
+  {
+    reminderDate: { type: Date, required: true },
+    reminderTime: { type: String, default: '10:00 AM' },
+    remarks: { type: String, default: '' },
+    scheduledBy: { type: String, default: 'Call Centre Executive' },
+    scheduledAt: { type: Date, default: Date.now },
+    status: { type: String, default: 'PENDING' },
+  },
+  { _id: false }
+);
+
+const AppointmentHistorySchema = new Schema<IAppointmentHistoryItem>(
+  {
+    appointmentDate: { type: Date, required: true },
+    appointmentTime: { type: String, default: '10:00 AM' },
+    remarks: { type: String, default: '' },
+    scheduledBy: { type: String, default: 'Call Coordinator' },
+    scheduledAt: { type: Date, default: Date.now },
+    status: { type: String, default: 'APPOINTMENT' },
+  },
+  { _id: false }
+);
+
+const TransferHistorySchema = new Schema<ITransferHistoryItem>(
+  {
+    fromEngineer: { type: String, default: '' },
+    toEngineer: { type: String, required: true },
+    fromTeam: { type: String, default: '' },
+    toTeam: { type: String, default: '' },
+    remarks: { type: String, default: '' },
+    transferredBy: { type: String, default: 'Service Manager' },
+    transferredAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+const CallFeedbackSchema = new Schema<ICallFeedback>(
+  {
+    rating: { type: Number, default: 5 },
+    customerRemarks: { type: String, default: '' },
+    collectedBy: { type: String, default: 'Call Centre Executive' },
+    collectedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+const PendingPartSchema = new Schema<IPendingPart>(
+  {
+    partName: { type: String, required: true },
+    partCode: { type: String, default: '' },
+    quantity: { type: Number, default: 1 },
+    unitSerialNumber: { type: String, default: '' },
+    pendingReason: { type: String, default: '' },
+    invoiceCopyUrl: { type: String, default: '' },
+    defectiveImageUrl: { type: String, default: '' },
+    pendingDate: { type: Date, default: Date.now },
+    pendingStatus: { type: String, default: 'PART_PENDING' },
+  },
+  { _id: false }
+);
+
+const ConsumedPartSchema = new Schema<IConsumedPart>(
+  {
+    partName: { type: String, required: true },
+    partCode: { type: String, default: '' },
+    consumedQuantity: { type: Number, default: 1 },
+    partSerialNumber: { type: String, default: '' },
+    consumptionDate: { type: Date, default: Date.now },
+    engineerName: { type: String, default: '' },
+    relatedCallId: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
+const WorkDoneRecordSchema = new Schema<IWorkDoneRecord>(
+  {
+    workDone: { type: String, required: true },
+    symptom: { type: String, default: '' },
+    cause: { type: String, default: '' },
+    analysis: { type: String, default: '' },
+    recordedDate: { type: Date, default: Date.now },
+    recordedBy: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
+const SerialNoHistorySchema = new Schema<ISerialNoHistoryItem>(
+  {
+    oldSerialNo: { type: String, default: '' },
+    newSerialNo: { type: String, required: true },
+    changedBy: { type: String, default: 'Super Admin' },
+    changedAt: { type: Date, default: Date.now },
+    remarks: { type: String, default: '' },
   },
   { _id: false }
 );
@@ -304,6 +530,26 @@ const ServiceCallSchema = new Schema<IServiceCall>(
 
     // Job Sheet / Call Update fields
     locality: { type: String, default: '' },
+    alternateMobile: { type: String, default: '' },
+    customerAddress2: { type: String, default: '' },
+    stdCode: { type: String, default: '' },
+    residencePhone: { type: String, default: '' },
+    officePhone: { type: String, default: '' },
+    customerLanguage: { type: String, default: 'Hindi' },
+    contractDetails: { type: String, default: '' },
+    callBy: { type: String, default: 'Customer' },
+    complaintType: { type: String, default: 'Service' },
+    complaintCategory: { type: String, default: 'General' },
+    ascName: { type: String, default: '' },
+    talkToWhom: { type: String, default: '' },
+    cancelRemarks: { type: String, default: '' },
+    appointmentTime: { type: String, default: '10:00 AM' },
+    poNumber: { type: String, default: '' },
+    poStatus: { type: String, default: 'ACTIVE' },
+    poCancellationReason: { type: String, default: '' },
+    poCancelledBy: { type: String, default: '' },
+    poCancelledAt: { type: Date },
+
     invoiceFile: { type: CallAttachmentSchema },
     defectivePartImages: { type: [CallAttachmentSchema], default: [] },
     jobDetails: { type: String, default: '' },
@@ -316,6 +562,17 @@ const ServiceCallSchema = new Schema<IServiceCall>(
     charges: { type: CallChargesSchema, default: () => ({}) },
     visitDetails: { type: VisitDetailsSchema, default: () => ({}) },
     visitHistory: { type: [VisitDetailsSchema], default: [] },
+
+    // Operational Timeline & Detailed Arrays
+    callHistory: { type: [CallHistorySchema], default: [] },
+    reminders: { type: [ReminderSchema], default: [] },
+    appointmentHistory: { type: [AppointmentHistorySchema], default: [] },
+    transferHistory: { type: [TransferHistorySchema], default: [] },
+    feedback: { type: CallFeedbackSchema },
+    pendingParts: { type: [PendingPartSchema], default: [] },
+    consumedParts: { type: [ConsumedPartSchema], default: [] },
+    workDoneRecords: { type: [WorkDoneRecordSchema], default: [] },
+    serialNoHistory: { type: [SerialNoHistorySchema], default: [] },
 
     callStatus: {
       type: String,
