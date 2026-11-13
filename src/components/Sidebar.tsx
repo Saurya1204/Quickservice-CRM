@@ -79,6 +79,7 @@ export default function Sidebar({
 
   const hasMappingAccess = canAccess('mapping');
   const hasCallAccess = canAccess('callManagement');
+  const hasEscalationAccess = canAccess('escalationManagement');
   const hasMasterDataAccess = canAccess('masterData');
   const hasUploaderAccess = canAccess('uploader');
   const hasReportsAccess = canAccess('reports');
@@ -90,6 +91,7 @@ export default function Sidebar({
     master: false,
     mapping: false,
     call: false,
+    escalation: false,
     masterData: false,
     uploader: false,
     reports: false,
@@ -145,6 +147,21 @@ export default function Sidebar({
       ].includes(currentSection)
     ) {
       setOpenMenus((prev) => ({ ...prev, call: true }));
+    } else if (
+      [
+        'escalationDashboard',
+        'raiseEscalation',
+        'allEscalations',
+        'myEscalations',
+        'pendingMyApproval',
+        'approvedEscalations',
+        'rejectedEscalations',
+        'escalationCategories',
+        'escalationConfig',
+        'escalationReports',
+      ].includes(currentSection)
+    ) {
+      setOpenMenus((prev) => ({ ...prev, escalation: true }));
     } else if (['download'].includes(currentSection)) {
       setOpenMenus((prev) => ({ ...prev, masterData: true }));
     } else if (['liveCallUpload', 'bulkExcelUpload'].includes(currentSection)) {
@@ -165,6 +182,7 @@ export default function Sidebar({
         master: false,
         mapping: false,
         call: false,
+        escalation: false,
         masterData: false,
         uploader: false,
         reports: false,
@@ -480,6 +498,102 @@ export default function Sidebar({
                   {canAccess('callManagement', 'callAudit') && (
                     <button onClick={() => handleItemClick('callAudit')} className={itemClass('callAudit')}>
                       Call Audit
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 4.5. Escalation Management Dropdown */}
+          {hasEscalationAccess && (
+            <div>
+              <button onClick={() => toggleMenu('escalation')} className={headerButtonClass(openMenus.escalation)}>
+                <span className="flex items-center space-x-1.5">
+                  <span>⚡ Escalation Management</span>
+                </span>
+                <span className="text-[11px] text-white font-bold">▼</span>
+              </button>
+              {openMenus.escalation && (
+                <div className="bg-[#0b1320] py-1 border-t border-[#1e293b]/50">
+                  {canAccess('escalationManagement', 'escalationDashboard') && (
+                    <button
+                      onClick={() => handleItemClick('escalationDashboard')}
+                      className={itemClass('escalationDashboard')}
+                    >
+                      Escalation Dashboard
+                    </button>
+                  )}
+                  {canAccess('escalationManagement', 'raiseEscalation') && (
+                    <button
+                      onClick={() => handleItemClick('raiseEscalation')}
+                      className={`${itemClass('raiseEscalation')} text-amber-300 font-semibold`}
+                    >
+                      ➕ Raise New Escalation
+                    </button>
+                  )}
+                  {canAccess('escalationManagement', 'allEscalations') && (
+                    <button
+                      onClick={() => handleItemClick('allEscalations')}
+                      className={itemClass('allEscalations')}
+                    >
+                      All Escalations
+                    </button>
+                  )}
+                  {canAccess('escalationManagement', 'myEscalations') && (
+                    <button
+                      onClick={() => handleItemClick('myEscalations')}
+                      className={itemClass('myEscalations')}
+                    >
+                      My Escalations
+                    </button>
+                  )}
+                  {canAccess('escalationManagement', 'pendingMyApproval') && (
+                    <button
+                      onClick={() => handleItemClick('pendingMyApproval')}
+                      className={`${itemClass('pendingMyApproval')} text-rose-300 font-medium`}
+                    >
+                      ⏳ Pending My Approval
+                    </button>
+                  )}
+                  {canAccess('escalationManagement', 'approvedEscalations') && (
+                    <button
+                      onClick={() => handleItemClick('approvedEscalations')}
+                      className={itemClass('approvedEscalations')}
+                    >
+                      Approved Escalations
+                    </button>
+                  )}
+                  {canAccess('escalationManagement', 'rejectedEscalations') && (
+                    <button
+                      onClick={() => handleItemClick('rejectedEscalations')}
+                      className={itemClass('rejectedEscalations')}
+                    >
+                      Rejected Escalations
+                    </button>
+                  )}
+                  {(isSuperAdmin || canAccess('escalationManagement', 'escalationCategories')) && (
+                    <button
+                      onClick={() => handleItemClick('escalationCategories')}
+                      className={`${itemClass('escalationCategories')} text-emerald-400`}
+                    >
+                      🏷️ Escalation Categories
+                    </button>
+                  )}
+                  {(isSuperAdmin || canAccess('escalationManagement', 'escalationConfig')) && (
+                    <button
+                      onClick={() => handleItemClick('escalationConfig')}
+                      className={`${itemClass('escalationConfig')} text-cyan-400`}
+                    >
+                      ⚙️ Escalation Configuration
+                    </button>
+                  )}
+                  {canAccess('escalationManagement', 'escalationReports') && (
+                    <button
+                      onClick={() => handleItemClick('escalationReports')}
+                      className={itemClass('escalationReports')}
+                    >
+                      📊 Escalation Reports
                     </button>
                   )}
                 </div>

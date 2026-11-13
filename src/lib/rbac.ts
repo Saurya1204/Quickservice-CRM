@@ -108,6 +108,24 @@ export const SYSTEM_MODULES: SystemModuleConfig[] = [
     ],
   },
   {
+    key: 'escalationManagement',
+    name: 'Escalation Management',
+    description: 'Dynamic Product, Service & Spare Replacement Escalations and Manager Approvals',
+    supportedActions: ['create', 'read', 'update', 'delete', 'export', 'approve'],
+    subSections: [
+      { key: 'escalationDashboard', label: 'Escalation Dashboard' },
+      { key: 'raiseEscalation', label: 'Raise New Escalation' },
+      { key: 'allEscalations', label: 'All Escalations' },
+      { key: 'myEscalations', label: 'My Escalations' },
+      { key: 'pendingMyApproval', label: 'Pending My Approval' },
+      { key: 'approvedEscalations', label: 'Approved Escalations' },
+      { key: 'rejectedEscalations', label: 'Rejected Escalations' },
+      { key: 'escalationCategories', label: 'Escalation Categories' },
+      { key: 'escalationConfig', label: 'Escalation Configuration' },
+      { key: 'escalationReports', label: 'Escalation Reports' },
+    ],
+  },
+  {
     key: 'masterData',
     name: 'Master Data Download',
     description: 'Export and download master data sets in CSV / Excel format',
@@ -323,10 +341,11 @@ export function generateDefaultPermissions(roleCode: string): IModulePermission[
         break;
 
       case 'HOD':
-        if (['dashboard', 'reports', 'masterData'].includes(mod.key)) {
+        if (['dashboard', 'reports', 'masterData', 'escalationManagement'].includes(mod.key)) {
           accessLevel = 'FULL';
           actions.read = true;
           actions.export = true;
+          actions.approve = true;
           if (mod.subSections) {
             mod.subSections.forEach((sub) => (subSections[sub.key] = true));
           }
@@ -349,11 +368,12 @@ export function generateDefaultPermissions(roleCode: string): IModulePermission[
         break;
 
       case 'ZSM':
-        if (['dashboard', 'branchMaster', 'franchiseMaster', 'technicianMaster', 'callManagement', 'reports'].includes(mod.key)) {
+        if (['dashboard', 'branchMaster', 'franchiseMaster', 'technicianMaster', 'callManagement', 'reports', 'escalationManagement'].includes(mod.key)) {
           accessLevel = 'RESTRICTED';
           actions.read = true;
           actions.update = true;
           actions.export = true;
+          actions.approve = true;
           if (mod.key === 'callManagement') {
             actions.reopenCall = true;
             actions.update = true;
@@ -475,6 +495,12 @@ export function generateDefaultPermissions(roleCode: string): IModulePermission[
           actions.export = true;
           subSections.dashboardReports = true;
           subSections.operationalReports = true;
+        } else if (mod.key === 'escalationManagement') {
+          accessLevel = 'RESTRICTED';
+          actions.read = true;
+          actions.create = true;
+          subSections.raiseEscalation = true;
+          subSections.myEscalations = true;
         }
         break;
 
@@ -493,6 +519,12 @@ export function generateDefaultPermissions(roleCode: string): IModulePermission[
           accessLevel = 'READ_ONLY';
           actions.read = true;
           subSections.operationalReports = true;
+        } else if (mod.key === 'escalationManagement') {
+          accessLevel = 'RESTRICTED';
+          actions.read = true;
+          actions.create = true;
+          subSections.raiseEscalation = true;
+          subSections.myEscalations = true;
         }
         break;
 
@@ -510,6 +542,16 @@ export function generateDefaultPermissions(roleCode: string): IModulePermission[
           if (mod.subSections) {
             mod.subSections.forEach((sub) => (subSections[sub.key] = true));
           }
+        } else if (mod.key === 'escalationManagement') {
+          accessLevel = 'FULL';
+          actions.read = true;
+          actions.create = true;
+          actions.update = true;
+          actions.approve = true;
+          actions.export = true;
+          if (mod.subSections) {
+            mod.subSections.forEach((sub) => (subSections[sub.key] = true));
+          }
         } else if (mod.key === 'technicianMaster' || mod.key === 'branchMaster') {
           accessLevel = 'READ_ONLY';
           actions.read = true;
@@ -522,11 +564,12 @@ export function generateDefaultPermissions(roleCode: string): IModulePermission[
         break;
 
       case 'ZONE_MANAGER':
-        if (['dashboard', 'branchMaster', 'franchiseMaster', 'technicianMaster', 'callManagement', 'reports'].includes(mod.key)) {
+        if (['dashboard', 'branchMaster', 'franchiseMaster', 'technicianMaster', 'callManagement', 'reports', 'escalationManagement'].includes(mod.key)) {
           accessLevel = 'RESTRICTED';
           actions.read = true;
           actions.update = true;
           actions.export = true;
+          actions.approve = true;
           if (mod.subSections) {
             mod.subSections.forEach((sub) => {
               if (!['financialReports', 'employeeReports'].includes(sub.key)) {
@@ -551,6 +594,17 @@ export function generateDefaultPermissions(roleCode: string): IModulePermission[
           subSections.callAppointment = true;
           subSections.jobsheetPrint = true;
           subSections.callFeedback = true;
+        } else if (mod.key === 'escalationManagement') {
+          accessLevel = 'RESTRICTED';
+          actions.read = true;
+          actions.create = true;
+          actions.approve = true;
+          subSections.escalationDashboard = true;
+          subSections.raiseEscalation = true;
+          subSections.myEscalations = true;
+          subSections.pendingMyApproval = true;
+          subSections.approvedEscalations = true;
+          subSections.rejectedEscalations = true;
         } else if (mod.key === 'technicianMaster') {
           accessLevel = 'READ_ONLY';
           actions.read = true;
@@ -570,6 +624,12 @@ export function generateDefaultPermissions(roleCode: string): IModulePermission[
           subSections.callAppointment = true;
           subSections.callReschedule = true;
           subSections.jobsheetPrint = true;
+        } else if (mod.key === 'escalationManagement') {
+          accessLevel = 'RESTRICTED';
+          actions.read = true;
+          actions.create = true;
+          subSections.raiseEscalation = true;
+          subSections.myEscalations = true;
         }
         break;
 
@@ -590,6 +650,12 @@ export function generateDefaultPermissions(roleCode: string): IModulePermission[
           subSections.callFeedback = true;
           subSections.callUpdate = true;
           subSections.callAllotment = true;
+        } else if (mod.key === 'escalationManagement') {
+          accessLevel = 'RESTRICTED';
+          actions.read = true;
+          actions.create = true;
+          subSections.raiseEscalation = true;
+          subSections.myEscalations = true;
         }
         break;
     }

@@ -10,6 +10,7 @@ import CallFeedbackAdminModule from '@/components/CallFeedbackAdminModule';
 interface CallManagementProps {
   initialMode?: string;
   currentUser?: any;
+  onSelectSection?: (section: string, callData?: any) => void;
 }
 
 export const CALL_MODULE_TITLES: Record<string, { title: string; subtitle: string; icon: string; badge: string }> = {
@@ -117,7 +118,11 @@ export const CALL_MODULE_TITLES: Record<string, { title: string; subtitle: strin
   },
 };
 
-export default function CallManagementView({ initialMode = 'callView', currentUser }: CallManagementProps) {
+export default function CallManagementView({
+  initialMode = 'callView',
+  currentUser,
+  onSelectSection,
+}: CallManagementProps) {
   const [activeTab, setActiveTab] = useState<string>(initialMode);
   const [calls, setCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1151,6 +1156,12 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
           onOpenPrint={(call) => {
             setDetailModalCall(null);
             setPrintModalCall(call);
+          }}
+          onRaiseEscalation={(call) => {
+            setDetailModalCall(null);
+            if (onSelectSection) {
+              onSelectSection('raiseEscalation', call);
+            }
           }}
         />
       )}

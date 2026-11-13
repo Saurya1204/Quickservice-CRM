@@ -7,6 +7,7 @@ interface CallDetailModalProps {
   onClose: () => void;
   onOpenJobSheet?: (call: any) => void;
   onOpenPrint?: (call: any) => void;
+  onRaiseEscalation?: (call: any) => void;
 }
 
 export default function CallDetailModal({
@@ -14,6 +15,7 @@ export default function CallDetailModal({
   onClose,
   onOpenJobSheet,
   onOpenPrint,
+  onRaiseEscalation,
 }: CallDetailModalProps) {
   if (!call) return null;
 
@@ -106,6 +108,19 @@ export default function CallDetailModal({
           </div>
 
           <div className="flex items-center gap-2">
+            {onRaiseEscalation && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onRaiseEscalation(call);
+                }}
+                className="text-xs px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-semibold transition shadow flex items-center space-x-1"
+                title="Raise Escalation for TV Panel, Major Spare or Exceptional Approval"
+              >
+                <span>⚡ Raise Escalation</span>
+              </button>
+            )}
             {onOpenJobSheet && (
               <button
                 type="button"

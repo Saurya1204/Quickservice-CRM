@@ -27,6 +27,7 @@ import FranchisePincodeMappingView from '@/components/FranchisePincodeMappingVie
 import DownloadView from '@/components/DownloadView';
 import DynamicMasterView from '@/components/DynamicMasterView';
 import CallManagementView from '@/components/CallManagementView';
+import EscalationManagementView from '@/components/EscalationManagementView';
 import UserManagementView from '@/components/UserManagementView';
 import UploaderView from '@/components/UploaderView';
 import ReportsView from '@/components/ReportsView';
@@ -54,9 +55,23 @@ const CALL_MANAGEMENT_SECTIONS = [
   'callAudit',
 ];
 
+const ESCALATION_SECTIONS = [
+  'escalationDashboard',
+  'raiseEscalation',
+  'allEscalations',
+  'myEscalations',
+  'pendingMyApproval',
+  'approvedEscalations',
+  'rejectedEscalations',
+  'escalationCategories',
+  'escalationConfig',
+  'escalationReports',
+];
+
 export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [currentSection, setCurrentSection] = useState('dashboard');
+  const [escalationCallData, setEscalationCallData] = useState<any | null>(null);
   const [checkedAuth, setCheckedAuth] = useState(false);
   const [visitedSections, setVisitedSections] = useState<Set<string>>(() => new Set(['dashboard']));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -340,7 +355,23 @@ export default function Home() {
 
         {/* 4. Call Management Views */}
         {CALL_MANAGEMENT_SECTIONS.includes(currentSection) && (
-          <CallManagementView initialMode={currentSection} currentUser={user} />
+          <CallManagementView
+            initialMode={currentSection}
+            currentUser={user}
+            onSelectSection={(sec, callData) => {
+              setCurrentSection(sec);
+              if (callData) setEscalationCallData(callData);
+            }}
+          />
+        )}
+
+        {/* 4.5. Escalation Management Views */}
+        {ESCALATION_SECTIONS.includes(currentSection) && (
+          <EscalationManagementView
+            initialMode={currentSection}
+            currentUser={user}
+            initialCallData={escalationCallData}
+          />
         )}
 
         {/* 5. Master Data Download */}
