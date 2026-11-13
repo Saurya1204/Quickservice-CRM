@@ -263,6 +263,8 @@ export interface IServiceCall extends Document {
   appointmentHistory?: IAppointmentHistoryItem[];
   transferHistory?: ITransferHistoryItem[];
   feedback?: ICallFeedback;
+  feedbackToken?: string;
+  feedbackStatus?: string;
   pendingParts?: IPendingPart[];
   consumedParts?: IConsumedPart[];
   workDoneRecords?: IWorkDoneRecord[];
@@ -569,6 +571,8 @@ const ServiceCallSchema = new Schema<IServiceCall>(
     appointmentHistory: { type: [AppointmentHistorySchema], default: [] },
     transferHistory: { type: [TransferHistorySchema], default: [] },
     feedback: { type: CallFeedbackSchema },
+    feedbackToken: { type: String, index: true },
+    feedbackStatus: { type: String, default: 'PENDING' },
     pendingParts: { type: [PendingPartSchema], default: [] },
     consumedParts: { type: [ConsumedPartSchema], default: [] },
     workDoneRecords: { type: [WorkDoneRecordSchema], default: [] },

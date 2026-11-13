@@ -5,6 +5,7 @@ import CallRegistrationModule from '@/components/CallRegistrationModule';
 import CallUpdateModule from '@/components/CallUpdateModule';
 import CallDetailModal from '@/components/CallDetailModal';
 import JobsheetPrintModal from '@/components/JobsheetPrintModal';
+import CallFeedbackAdminModule from '@/components/CallFeedbackAdminModule';
 
 interface CallManagementProps {
   initialMode?: string;
@@ -711,8 +712,26 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
         </div>
       )}
 
+      {/* MODULE 10: CALL FEEDBACK (Dedicated Feedback Management, Links & Reports) */}
+      {activeTab === 'callFeedback' && (
+        <CallFeedbackAdminModule
+          currentUser={currentUser}
+          onOpenComplaintView={async (complaintNo: string) => {
+            try {
+              const res = await fetch(`/api/calls?complaintNo=${encodeURIComponent(complaintNo)}`);
+              const json = await res.json();
+              if (json.success && json.data && json.data.length > 0) {
+                setDetailModalCall(json.data[0]);
+              }
+            } catch (err) {
+              console.error(err);
+            }
+          }}
+        />
+      )}
+
       {/* ALL OTHER MODULES (TABLE & SEARCH BASED) */}
-      {activeTab !== 'callRegistration' && activeTab !== 'callUpdate' && activeTab !== 'callAudit' && (
+      {activeTab !== 'callRegistration' && activeTab !== 'callUpdate' && activeTab !== 'callAudit' && activeTab !== 'callFeedback' && (
         <div className="space-y-4">
           {/* MULTI-FIELD SEARCH ACCORDION / FILTER BAR */}
           <div className="bg-[#1e293b] border border-[#334155] rounded-xl p-4 shadow-lg space-y-3">

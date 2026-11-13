@@ -166,6 +166,16 @@ export default function CallDetailModal({
                 <span className="text-[10px] text-slate-400 block uppercase font-semibold">Dealer City</span>
                 <span className="text-white font-medium">{call.dealerCity || 'N/A'}</span>
               </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block uppercase font-semibold">Customer Feedback</span>
+                {call.feedback ? (
+                  <span className="text-amber-400 font-bold">
+                    {'⭐'.repeat(Math.min(5, Math.max(1, call.feedback.rating || 5)))} ({call.feedback.rating}/5)
+                  </span>
+                ) : (
+                  <span className="text-slate-500 italic">Not Submitted</span>
+                )}
+              </div>
             </div>
           </div>
 
