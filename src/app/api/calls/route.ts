@@ -293,6 +293,50 @@ export async function PUT(req: Request) {
     // Preserve Call ID integrity: Call ID must remain unchanged when editing an existing call
     delete updateData.callNo;
 
+    // Validate mandatory conditions if updating to PART_PENDING or full Call Update
+    const existingCallForUpdate = await ServiceCall.findById(id).select('+invoiceFile.fileData +defectivePartImages.fileData');
+    if (!existingCallForUpdate) {
+      return NextResponse.json({ success: false, message: 'Call not found' }, { status: 404 });
+    }
+
+    const targetStatus = (updateData.callStatus || updateData.presentStatus || existingCallForUpdate.callStatus || '').toUpperCase();
+
+    if (updateData.isCallUpdate || targetStatus === 'PART_PENDING') {
+      const serialNo = (updateData.serialNo || existingCallForUpdate.serialNo || updateData.unitSerialNumber || '').trim();
+      if (!serialNo) {
+        return NextResponse.json(
+          { success: false, field: 'serialNo', message: 'Product Serial Number is mandatory for all call updates.' },
+          { status: 400 }
+        );
+      }
+
+      const hasInvoice = !!(updateData.invoiceFile || existingCallForUpdate.invoiceFile?.fileName || existingCallForUpdate.invoiceFile?.fileUrl);
+      if (!hasInvoice) {
+        return NextResponse.json(
+          { success: false, field: 'invoice', message: 'Product Invoice copy is mandatory for all call updates.' },
+          { status: 400 }
+        );
+      }
+
+      if (targetStatus === 'PART_PENDING') {
+        const unitSerial = (updateData.unitSerialNumber || existingCallForUpdate.unitSerialNumber || serialNo).trim();
+        if (!unitSerial) {
+          return NextResponse.json(
+            { success: false, field: 'unitSerialNumber', message: 'Unit Set Serial Number is mandatory when status is PART_PENDING.' },
+            { status: 400 }
+          );
+        }
+
+        const defectiveCount = (existingCallForUpdate.defectivePartImages?.length || 0) + (updateData.defectivePartImages?.length || 0);
+        if (defectiveCount === 0) {
+          return NextResponse.json(
+            { success: false, field: 'defectiveImages', message: 'At least one Defective Part Image is mandatory when status is PART_PENDING.' },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     const updated = await ServiceCall.findByIdAndUpdate(id, updateData, { new: true });
     return NextResponse.json({
       success: true,

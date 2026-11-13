@@ -7,6 +7,49 @@ export interface IReopenRecord {
   previousStatus: string;
 }
 
+export interface ICallAttachment {
+  fileName: string;
+  fileUrl: string;
+  fileData?: string;
+  mimeType?: string;
+  fileSize?: number;
+  uploadedAt: Date;
+}
+
+export interface IRequiredPart {
+  partName: string;
+  partCode: string;
+  quantity: number;
+  status: 'Required' | 'Change';
+}
+
+export interface ICallCharges {
+  spareCharge: number;
+  spareTax: number;
+  labourCharge: number;
+  labourTax: number;
+  transportCharge: number;
+  otherCharge: number;
+  totalAmount: number;
+  tcrNo: string;
+}
+
+export interface IVisitDetails {
+  engineerName: string;
+  visitDate?: Date | string;
+  inTimeHour: string;
+  inTimeMinute: string;
+  outTimeHour: string;
+  outTimeMinute: string;
+  actionTaken: string;
+  engineerRemark: string;
+  lastStatus: string;
+  presentStatus: string;
+  happyCode: string;
+  distanceFromSF: number;
+  updatedAt?: Date;
+}
+
 export interface IServiceCall extends Document {
   callNo: string;
   customerName: string;
@@ -94,6 +137,22 @@ export interface IServiceCall extends Document {
     replacementReason?: string;
     replacementDate?: Date;
   };
+
+  // Job Sheet / Call Update fields
+  locality?: string;
+  invoiceFile?: ICallAttachment;
+  defectivePartImages?: ICallAttachment[];
+  jobDetails?: string;
+  symptomRegistered?: string;
+  symptomObserved?: string;
+  cause?: string;
+  analysis?: string;
+  partRequired?: string;
+  requiredParts?: IRequiredPart[];
+  charges?: ICallCharges;
+  visitDetails?: IVisitDetails;
+  visitHistory?: IVisitDetails[];
+
   callStatus: 'OPEN' | 'APPOINTMENT' | 'ALLOTED' | 'PART_PENDING' | 'COMPLETED' | 'CANCEL' | 'REOPENED';
   appointmentDate?: Date;
   daysPending: number;
@@ -101,6 +160,61 @@ export interface IServiceCall extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const CallAttachmentSchema = new Schema<ICallAttachment>(
+  {
+    fileName: { type: String, required: true },
+    fileUrl: { type: String, required: true },
+    fileData: { type: String, select: false },
+    mimeType: { type: String, default: 'application/octet-stream' },
+    fileSize: { type: Number, default: 0 },
+    uploadedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+const RequiredPartSchema = new Schema<IRequiredPart>(
+  {
+    partName: { type: String, required: true },
+    partCode: { type: String, default: '' },
+    quantity: { type: Number, default: 1 },
+    status: { type: String, enum: ['Required', 'Change'], default: 'Required' },
+  },
+  { _id: false }
+);
+
+const CallChargesSchema = new Schema<ICallCharges>(
+  {
+    spareCharge: { type: Number, default: 0 },
+    spareTax: { type: Number, default: 0 },
+    labourCharge: { type: Number, default: 0 },
+    labourTax: { type: Number, default: 0 },
+    transportCharge: { type: Number, default: 0 },
+    otherCharge: { type: Number, default: 0 },
+    totalAmount: { type: Number, default: 0 },
+    tcrNo: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
+const VisitDetailsSchema = new Schema<IVisitDetails>(
+  {
+    engineerName: { type: String, default: '' },
+    visitDate: { type: Date },
+    inTimeHour: { type: String, default: '10' },
+    inTimeMinute: { type: String, default: '00' },
+    outTimeHour: { type: String, default: '11' },
+    outTimeMinute: { type: String, default: '00' },
+    actionTaken: { type: String, default: '' },
+    engineerRemark: { type: String, default: '' },
+    lastStatus: { type: String, default: '' },
+    presentStatus: { type: String, default: '' },
+    happyCode: { type: String, default: '' },
+    distanceFromSF: { type: Number, default: 0 },
+    updatedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
 
 const ReopenRecordSchema = new Schema<IReopenRecord>(
   {
@@ -187,6 +301,21 @@ const ServiceCallSchema = new Schema<IServiceCall>(
     promiseDate: { type: String, default: '' },
     promiseTime: { type: String, default: '9-11 AM' },
     registeredBy: { type: String, default: 'Call Coordinator' },
+
+    // Job Sheet / Call Update fields
+    locality: { type: String, default: '' },
+    invoiceFile: { type: CallAttachmentSchema },
+    defectivePartImages: { type: [CallAttachmentSchema], default: [] },
+    jobDetails: { type: String, default: '' },
+    symptomRegistered: { type: String, default: '' },
+    symptomObserved: { type: String, default: '' },
+    cause: { type: String, default: '' },
+    analysis: { type: String, default: '' },
+    partRequired: { type: String, default: 'No' },
+    requiredParts: { type: [RequiredPartSchema], default: [] },
+    charges: { type: CallChargesSchema, default: () => ({}) },
+    visitDetails: { type: VisitDetailsSchema, default: () => ({}) },
+    visitHistory: { type: [VisitDetailsSchema], default: [] },
 
     callStatus: {
       type: String,

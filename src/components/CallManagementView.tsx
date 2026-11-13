@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import PincodeField from '@/components/common/PincodeLookup';
 import CallRegistrationModule from '@/components/CallRegistrationModule';
+import CallUpdateModule from '@/components/CallUpdateModule';
 
 interface CallManagementProps {
   initialMode?: string;
@@ -24,6 +25,7 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
   const [actionSaving, setActionSaving] = useState(false);
   const [reopenHistoryModalCall, setReopenHistoryModalCall] = useState<any | null>(null);
   const [masterCategories, setMasterCategories] = useState<any[]>([]);
+  const [updateCallId, setUpdateCallId] = useState<string | undefined>(undefined);
 
   // Check Reopen Permission
   const isSuperAdmin =
@@ -343,6 +345,19 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
               <span>🔄 Reopen Closed Calls</span>
             </button>
             <button
+              onClick={() => {
+                setUpdateCallId(undefined);
+                setActiveTab('callUpdate');
+              }}
+              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${
+                activeTab === 'callUpdate'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              📋 Call Update / Job Sheet
+            </button>
+            <button
               onClick={() => setActiveTab('callRegistration')}
               className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${
                 activeTab === 'callRegistration'
@@ -580,8 +595,23 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
           />
         )}
 
-        {/* MODE 2: CALL VIEW / REOPEN / ALLOTMENT */}
-        {activeTab !== 'callRegistration' && (
+        {/* MODE 2: CALL UPDATE / JOB SHEET */}
+        {activeTab === 'callUpdate' && (
+          <CallUpdateModule
+            currentUser={currentUser}
+            initialCallId={updateCallId}
+            onCallUpdated={() => {
+              fetchCalls();
+            }}
+            onBack={() => {
+              setActiveTab('callView');
+              setUpdateCallId(undefined);
+            }}
+          />
+        )}
+
+        {/* MODE 3: CALL VIEW / REOPEN / ALLOTMENT */}
+        {activeTab !== 'callRegistration' && activeTab !== 'callUpdate' && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 bg-[#172033] p-3 rounded-xl border border-[#334155]">
               <div className="flex flex-wrap gap-2">
@@ -730,6 +760,15 @@ export default function CallManagementView({ initialMode = 'callView', currentUs
                                 </>
                               )}
 
+                              <button
+                                onClick={() => {
+                                  setUpdateCallId(c._id);
+                                  setActiveTab('callUpdate');
+                                }}
+                                className="text-[11px] px-2 py-0.5 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 rounded border border-blue-500/30 font-medium"
+                              >
+                                📋 Job Sheet
+                              </button>
                               <button
                                 onClick={() => handleStartEdit(c)}
                                 className="text-[11px] px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700"
